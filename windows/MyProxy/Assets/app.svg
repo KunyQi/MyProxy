@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>MyProxy：晨光与港口</title>
+  <rect x="12" y="12" width="232" height="232" fill="#FAF8F1" stroke="#25231F" stroke-width="8"/>
+  <path d="M56 72H88V168H168V72H200V200H56Z" fill="#25231F"/>
+  <rect x="112" y="48" width="32" height="32" fill="#25231F"/>
+</svg>

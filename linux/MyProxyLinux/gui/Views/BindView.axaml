@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MyProxy.Gui.Views.BindView"
+             Height="720"
+             UseLayoutRounding="True"
+             Background="{DynamicResource Brush.Background}">
+    <!--
+    ================================================================================
+    绑定页：逐项照搬 windows/MyProxy/Views/BindView.xaml。
+    布局坐标、文案、可见性规则、绑定名与 Windows 端一致；不同的只有方言（见下）。
+    ================================================================================
+
+    窗口高度对所有页面恒为 720：点「设置」时窗口尺寸不该跳。
+    本页内容按自己的紧凑高度排布，整体垂直居中，上下留白对称。
+    紧凑高度回到 420：当初提到 500 是为了「服务器地址」一栏与身份确认面板，
+    服务器改回编译期常量之后两者都没有了。
+
+    —— 方言（WPF XAML → Avalonia 11），四处等价替换：
+
+    1. TextOptions.TextFormattingMode / TextRenderingMode：Avalonia 没有对应物，已删。
+
+    2. WPF 的样式引用（Style 属性 + StaticResource）→ Theme="{DynamicResource 「同名 key」}"：
+       Avalonia 的控件上没有 Style 属性（它的 Style 是 CSS 式的选择器；与 WPF Style 对应的
+       是 ControlTheme，经 Theme 属性套到控件上）。key 名与 Windows 端一字不改，
+       DynamicResource 保证换肤生效。
+
+    3. Visibility="{Binding X}" → IsVisible="{Binding X}"：Avalonia 没有 Visibility 类型
+       （Visual 上只有 bool IsVisible）。**绑定名一个字都没改**，ViewModel 侧的
+       CodeErrorVisibility / FormErrorVisibility 请返回 bool。
+
+    4. CharacterCasing="Upper"：Avalonia 的 TextBox 没有这个属性，已删。
+       等价物是共享的 MyProxy.Core.PairingCodeFormatter（ToUpperInvariant），
+       由 Views/PairingCodeInput.cs 的编辑行为在每次输入后执行——见 BindView.axaml.cs
+       里那行 PairingCodeInput.Attach(PairingCodeBox)（对应 Windows 端的
+       `_ = new PairingCodeInput(PairingCodeBox);`）。ViewModel 的 PairingCode
+       收到的就已经是规范形式（XXXX-XXXX）。
+       MaxLength="9" 是 Windows 端写死的那个 9（8 位码 + 1 个连字符），照旧。
+    -->
+    <Grid Theme="{DynamicResource PageRootStyle}"
+          Height="420"
+          VerticalAlignment="Center">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="MyProxy"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   Theme="{DynamicResource PageTitleTextStyle}" />
+
+        <!-- 标题与它的说明是同一个 band：宿主 → 解释用 Space.XS，不占一整个 band gap -->
+        <StackPanel Grid.Row="2">
+            <TextBlock Text="首次绑定"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Theme="{DynamicResource PrimaryTextStyle}" />
+            <TextBlock Margin="{DynamicResource Thickness.TopXS}"
+                       Text="填写你收到的 8 位配对码"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Theme="{DynamicResource SecondaryTextStyle}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="4">
+            <Grid Theme="{DynamicResource ReservedLineStyle}">
+                <TextBlock Text="配对码"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Theme="{DynamicResource SecondaryTextStyle}" />
+            </Grid>
+            <!-- 输入框的错误态：Windows 端把 HasCodeError 绑在 Tag 上，由
+                 TextInputErrorStateStyle 的 Style.Triggers 依据 Tag 触发红框。
+                 Avalonia 没有 DataTrigger，样式改成在**基主题**里读这个 Tag（错误态已做进
+                 TextInputStyle），所以这里照搬一个 Tag 绑定就够了，不需要额外挂样式类。
+                 主题 key 用 TextInputStyle 而不是 TextInputErrorStateStyle：后者在 Linux 端
+                 是同义空壳（Windows 端两个 key 各自带触发条件，Linux 端都收在基主题里）。 -->
+            <TextBox x:Name="PairingCodeBox"
+                     Margin="{DynamicResource Thickness.TopSM}"
+                     Theme="{DynamicResource TextInputStyle}"
+                     Text="{Binding PairingCode, UpdateSourceTrigger=PropertyChanged}"
+                     Tag="{Binding HasCodeError}"
+                     IsEnabled="{Binding IsInputEnabled}"
+                     MaxLength="9"
+                     HorizontalContentAlignment="Center" />
+            <Grid Theme="{DynamicResource ReservedLineStyle}"
+                  Margin="{DynamicResource Thickness.TopXS}">
+                <TextBlock Text="{Binding CodeErrorMessage}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding CodeErrorVisibility}"
+                           Theme="{DynamicResource InlineErrorTextStyle}" />
+            </Grid>
+            <Grid Theme="{DynamicResource ReservedLineStyle}">
+                <TextBlock Text="{Binding FormErrorMessage}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding FormErrorVisibility}"
+                           Theme="{DynamicResource InlineErrorTextStyle}" />
+            </Grid>
+        </StackPanel>
+
+        <Button Grid.Row="6"
+                Theme="{DynamicResource PrimaryButtonStyle}"
+                Content="{Binding BindButtonText}"
+                Command="{Binding BindCommand}"
+                IsDefault="True" />
+    </Grid>
+</UserControl>

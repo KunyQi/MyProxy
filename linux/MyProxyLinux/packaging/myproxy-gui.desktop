@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=MyProxy
+Name[zh_CN]=MyProxy
+Comment=Local proxy client with a tray icon
+Comment[zh_CN]=带托盘图标的本地代理客户端
+# 托盘程序是**客户端**，不是连接持有者：它通过 $XDG_DATA_HOME/myproxy/runtime/control.sock
+# 与后台服务说话，退出它不会断开连接。后台服务由 `myproxy autostart on` 交给
+# systemd 用户单元（或 XDG autostart）拉起。
+Exec=myproxy-gui
+Icon=myproxy
+Terminal=false
+Categories=Network;
+Keywords=proxy;myproxy;
+StartupNotify=false

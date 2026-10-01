@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MyProxy.Gui.MainWindow"
+        Title="MyProxy"
+        Width="400"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        Background="{DynamicResource Brush.Background}">
+
+
+
+    <ContentControl x:Name="PageHost" Focusable="False" />
+</Window>

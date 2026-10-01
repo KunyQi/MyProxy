@@ -1,0 +1,612 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+    ================================================================================
+    模式滑动开关（ModeSwitch*）、分段控件（Segmented*）、开关（ToggleSwitch）
+    —— 从 windows/MyProxy/Themes/{DesignTokens,Ceramic,Porcelain}.xaml 三份字典里逐项搬。
+    ================================================================================
+
+    这三组控件在三套皮肤里的**几何完全一致**，差别只落在材质（釉面、按下、凹陷、投影）
+    上，而那些材质差异已经是同名令牌（`Brush.*`、`Glaze.*`、`Shadow.*`、`Radius.*`、
+    `Motion.*`）。所以这里只有**一份**模板，三套皮肤共用；换肤只是把同名令牌换一组值。
+
+    尺寸与圆角逐值照抄 Windows 端，因为这些数字是被画面反向对齐过的：
+      模式开关  轨道 352×44 R12（Radius.Pill），滑块 168×36 R8（Radius.ModeThumb），
+                左侧内嵌 4（Thickness.ModeThumbInset），行程 176（Size.ModeThumbTravel）。
+                滑块必须与文字列同心：轨道分两列各 176，文字中心在 88 / 264；
+                宽 168 + 左侧内嵌 4 → 中心 4+84=88；推到右列后中心 176+88=264。
+                旧值 172/172 会让中心停在 90 / 262，与文字差 2px 且两端反向。
+      开关      轨道 40×20 R6（Radius.SM），拨块 14×14 R3（Radius.SwitchThumb），
+                行程 20（Size.SwitchThumbTravel）。
+                同心圆角规则：内圆角 = 外圆角 − 两者间距。轨道 44 高 R12 配 36 高的
+                滑块、四周留 4 → 12−4=8 ✓；轨道 20 高 R6 配 14 的拨块、四周留 3 →
+                6−3=3 ✓。拨块曾经是 Ellipse（等效 R7）嵌在 R6 的方轨里，两条弧对不上，
+                一眼就是「矩形框里嵌了个纯圆」——改轨道半径救不了，那是混族。
+
+    ⚠ 本文件里**没有** `Brush.Glaze.*` / `Glaze.*` / `Thickness.Rim*` / `Glaze.Bisque`：
+      那几支只有 Ceramic 提供。引用它们会让另两套皮肤在运行时的字典查找落空并回落到
+      默认值（不报错，只是悄悄不对）。Ceramic 的釉面材质由它自己的令牌承担
+      （`Glaze.Surface.Convex` / `Glaze.Well.Concave` / `Glaze.Accent.Concave` / `Glaze.Bisque`），
+      逐条对照见文件末尾的「三套皮肤差异对照」。
+    -->
+
+    <!-- ============ 模式滑动开关 ============ -->
+
+
+    <ControlTheme x:Key="ModeSwitchItemStyle" TargetType="RadioButton">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent">
+                    <TextBlock x:Name="ModeLabel"
+                               Text="{TemplateBinding Content}"
+                               Foreground="{TemplateBinding Foreground}"
+                               FontFamily="{TemplateBinding FontFamily}"
+                               FontSize="{TemplateBinding FontSize}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <ControlTheme.Children>
+            <Style Selector="^:checked">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+            </Style>
+            <Style Selector="^:checked:pointerover">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSunken}" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+                <Setter Property="Cursor" Value="Arrow" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!--
+      托盘本体：352×44 的凹槽 + 一块在上面滑的滑块，两格 RadioButton 叠在其上。
+
+      **视图契约（重要，视图作者按这个写）**
+        1. 控件挂 `Theme="{StaticResource ModeSwitchStyle}"`；
+        2. DataContext 上有 `IsRuleMode` / `IsGlobalMode` / `IsModeSelectionEnabled`
+           三个属性（与 Windows 端 ViewModel 同名——是硬要求，改名就动不了）；
+        3. **当前是不是全局模式，要由视图用类名告诉这一层**：
+             全局代理 → `Classes="global"`；智能分流 → 不加这个类。
+           例如 `Classes.global="{Binding IsGlobalMode}"`。
+           为什么不让这一层自己去问：滑块的位移是**跨模板边界**的状态
+           （判断依据在两格 RadioButton 的 `IsChecked` 上，被驱动的是托盘里的滑块），
+           Avalonia 的选择器没有 CSS 的兄弟/后代组合子能表达这种关系（`/template/`
+           只能进入「模板化父级就是本控件」的元素，`~`、`>` 都不可用）；
+           而让滑块去绑 `$parent` 又会先撞上 `Window` / `UserControl`。
+           与其用一个没法验证的间接写法，不如把这一位状态交回视图——它本来就在
+           ViewModel 上，绑一次类名即可。
+
+      滑块的位移用 `RenderTransform` + `TransformOperationsTransition`：
+      Avalonia 的 Transitions 在属性值变化时补间，两个方向都动；而 WPF 那套
+      `TranslateTransform` + Storyboard 的写法在这里**不行**——官方明确说明
+      Avalonia 不支持对 WPF 风格变换做 transition，滑块会瞬移。
+      注意值必须是 `TransformOperations`（一串变换，如 `translate(0px, 0px)`），
+      不是 `<TranslateTransform/>`。
+    -->
+    <ControlTheme x:Key="ModeSwitchStyle" TargetType="ContentControl">
+        <Setter Property="Width" Value="{DynamicResource Size.ContentWidth}" />
+        <Setter Property="Height" Value="{DynamicResource Size.ModeTrackHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <!-- 凹陷轨道：比基座亮一档的釉白，读作被压下去的一层。
+                         Ceramic 覆盖成 Glaze.Well.Concave（一道上暗下亮的刻槽），
+                         另两套就是 SurfaceSunken。 -->
+                    <Border x:Name="ModeTrack"
+                            CornerRadius="{DynamicResource Radius.Pill}"
+                            Background="{DynamicResource Brush.SurfaceSunken}"
+                            BorderBrush="{DynamicResource Brush.Border}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}" />
+
+                    <!-- 滑块：R8 = 12 − 4，与轨道同心；接触影 = 「浮起来」的那一半。
+                         Porcelain 的 Shadow.Contact 是 opacity 0 的空影，它靠
+                         「比轨道亮一档 + 发丝边」分层——同一份模板。 -->
+                    <Border x:Name="ModeThumb"
+                            Width="{DynamicResource Size.ModeThumbWidth}"
+                            Height="{DynamicResource Size.ModeThumbHeight}"
+                            HorizontalAlignment="Left"
+                            Margin="{DynamicResource Thickness.ModeThumbInset}"
+                            CornerRadius="{DynamicResource Radius.ModeThumb}"
+                            Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.Border}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            Effect="{DynamicResource Shadow.Contact}"
+                            RenderTransform="translate(0px, 0px)"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <TransformOperationsTransition Property="RenderTransform"
+                                                               Duration="{DynamicResource Motion.Duration.Slide}"
+                                                               Easing="{DynamicResource Motion.Ease.Slide}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 绑定不写 `$parent[ContentControl]`：模板子级继承的 DataContext
+                             就是本控件（ModeSwitch 那一层）的 DataContext，也就是视图给的
+                             ViewModel，直接绑名字最稳。写 `$parent[ContentControl]` 会先撞上
+                             `Window` / `UserControl`（两者都派生自 ContentControl），
+                             在窗口或页面宿主上就解到空的 DataContext 上去了。
+
+                             ⚠ 两格的模板**不在这里挂**：`Theme="{StaticResource
+                             ModeSwitchItemStyle}"` 在这个位置会被父级那套 ModeSwitchStyle
+                             顶掉（两格各自长出一整层 352×44 的轨道与滑块，第二格被推到 x=88
+                             让窗口右缘切掉，截图上就是「两段文字被裁」），实例上内联同一个
+                             ControlTheme 也一样被顶掉。模板改由 ModeSwitchHost
+                             在模板展开后直接写上去，原因与完整实验记录见
+                             Views/ModeSwitchHost.cs 与文件上方 ModeSwitchItemStyle 的注释。 -->
+                        <RadioButton Grid.Column="0"
+                                     GroupName="ProxyMode"
+                                     Content="智能分流"
+                                     IsChecked="{Binding IsRuleMode, Mode=TwoWay}"
+                                     IsEnabled="{Binding IsModeSelectionEnabled}" />
+
+                        <RadioButton Grid.Column="1"
+                                     GroupName="ProxyMode"
+                                     Content="全局代理"
+                                     IsChecked="{Binding IsGlobalMode, Mode=TwoWay}"
+                                     IsEnabled="{Binding IsModeSelectionEnabled}" />
+                    </Grid>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <!-- 滑块滑到右列：行程 176（= 整列宽），中心从 88 落到 264。
+                 位移写在 /template/ 里那块 Border 上，值用 CSS 风格的 translate；
+                 Transition 负责补间，所以这里只声明两端的目标值。 -->
+            <Style Selector="^.global /template/ Border#ModeThumb">
+                <Setter Property="RenderTransform" Value="translate(176px, 0px)" />
+            </Style>
+            <!-- 不可选模式时 Windows 端把滑块压到 Opacity 0.5。这一条**没有搬**：
+                 它要读的是 DataContext 上的 `IsModeSelectionEnabled`，而滑块与
+                 DataContext 之间隔着模板边界，Avalonia 的类选择器是「类名匹配」，
+                 不是「属性值匹配」，绑不了。
+                 实际损失为零——那一档下两格 RadioButton 自己会进 :disabled
+                 （文字换 TextDisabled），已经能读出「现在不能选」，
+                 滑块那 0.5 的透明度是它上面的一层修饰。 -->
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!-- ============ 分段控件（SegmentedControl 族） ============ -->
+
+    <!--
+      三格分段控件：设置页的「外观」用它（`Size.ThemePicker` = 186，三格各 62）。
+
+      与模式开关不同，这一族在 WPF 里就是靠 RadioButton 自己的 `IsChecked` 驱动的
+      （选中层由 `:checked` 淡入），所以**不需要视图给类名**——只要挂对 Theme 就行。
+      左/中/右三格只差三件事：圆角、描边厚度、以及哪一条边有描边（接缝处只画一条）。
+
+      基样式只声明「格子里放什么颜色」和字重缺口，模板留给三个派生主题。
+      `Background` 在这里的含义是**选中块的颜色**（默认皮肤 = Brush.Accent，
+      Porcelain = Brush.AccentText，Ceramic = Glaze.Surface.Convex），由
+      SelectionLayer 承载；格子本身恒为 Brush.Surface 底。
+      ⚠ 视图不要在单格上写 Background，那会盖掉选中色。
+    -->
+    <ControlTheme x:Key="SegmentedControlItemStyle" TargetType="RadioButton">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Cursor" Value="Hand" />
+
+        <ControlTheme.Children>
+            <Style Selector="^:checked">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="FontWeight" Value="Medium" />
+            </Style>
+
+            <Style Selector="^:checked:disabled">
+                <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                <Setter Property="FontWeight" Value="Medium" />
+            </Style>
+            <Style Selector="^:not(:checked):disabled">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                <Setter Property="Cursor" Value="Arrow" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!-- 左格：左圆角（Radius.MD.Left = 8,0,0,8），描边 1,1,0,1（接缝那侧不画）。 -->
+    <ControlTheme x:Key="SegmentedItemLeftStyle"
+                  TargetType="RadioButton"
+                  BasedOn="{StaticResource SegmentedControlItemStyle}">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- 五层同几何同圆角：底 Surface / hover / 选中 / 描边框 / 内容。
+                     描边画在填充**之上**，填充不会溢出压住边框，圆角天然同心
+                     （基座 → 选中 → 描边各 0.5px，视觉上就是一条完整的 1px 线）。
+                     Ceramic 的差异只在于它把「底」换成 Glaze.Well.Concave、
+                     「选中」换成 Glaze.Surface.Convex —— 都是令牌，四层结构不变。 -->
+                <Grid>
+                    <Border x:Name="SegmentBase"
+                            Background="{DynamicResource Brush.Surface}"
+                            CornerRadius="{DynamicResource Radius.MD.Left}" />
+
+                    <Border x:Name="HoverLayer"
+                            Background="{DynamicResource Brush.Background}"
+                            CornerRadius="{DynamicResource Radius.MD.Left}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="SelectionLayer"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource Radius.MD.Left}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="SegmentStroke"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{DynamicResource Thickness.SegmentLeft}"
+                            CornerRadius="{DynamicResource Radius.MD.Left}"
+                            Background="Transparent"
+                            IsHitTestVisible="False" />
+
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:checked /template/ Border#SelectionLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <!-- hover 与选中是两个独立叠加层，互不吞掉对方：选中时 hover 层不再亮
+                 （`:not(:checked)`），与 Windows 端的 MultiTrigger 条件一致。 -->
+            <Style Selector="^:pointerover:not(:checked) /template/ Border#HoverLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!-- 中格：方角（Radius.None = 0），描边 1,1,0,1。 -->
+    <ControlTheme x:Key="SegmentedItemMiddleStyle"
+                  TargetType="RadioButton"
+                  BasedOn="{StaticResource SegmentedControlItemStyle}">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <Border x:Name="SegmentBase"
+                            Background="{DynamicResource Brush.Surface}"
+                            CornerRadius="{DynamicResource Radius.None}" />
+
+                    <Border x:Name="HoverLayer"
+                            Background="{DynamicResource Brush.Background}"
+                            CornerRadius="{DynamicResource Radius.None}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="SelectionLayer"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource Radius.None}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="SegmentStroke"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{DynamicResource Thickness.SegmentMiddle}"
+                            CornerRadius="{DynamicResource Radius.None}"
+                            Background="Transparent"
+                            IsHitTestVisible="False" />
+
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:checked /template/ Border#SelectionLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <Style Selector="^:pointerover:not(:checked) /template/ Border#HoverLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!-- 右格：右圆角（Radius.MD.Right = 0,8,8,0），描边 0,1,1,1，与左格镜像。 -->
+    <ControlTheme x:Key="SegmentedItemRightStyle"
+                  TargetType="RadioButton"
+                  BasedOn="{StaticResource SegmentedControlItemStyle}">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <Border x:Name="SegmentBase"
+                            Background="{DynamicResource Brush.Surface}"
+                            CornerRadius="{DynamicResource Radius.MD.Right}" />
+
+                    <Border x:Name="HoverLayer"
+                            Background="{DynamicResource Brush.Background}"
+                            CornerRadius="{DynamicResource Radius.MD.Right}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="SelectionLayer"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource Radius.MD.Right}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="SegmentStroke"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{DynamicResource Thickness.SegmentRight}"
+                            CornerRadius="{DynamicResource Radius.MD.Right}"
+                            Background="Transparent"
+                            IsHitTestVisible="False" />
+
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:checked /template/ Border#SelectionLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <Style Selector="^:pointerover:not(:checked) /template/ Border#HoverLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!-- ============ 开关（ToggleSwitch） ============ -->
+
+    <!--
+      Windows 端这个 key 的 TargetType 是 CheckBox（WPF 里开关就是换了模板的
+      CheckBox 无内容）。Avalonia 有**原生**的 `ToggleSwitch`（ToggleButton 派生），
+      「一条轨道 + 一块滑动的拨块 + 右侧标签」正是它的语义，所以这里 TargetType 换成
+      `ToggleSwitch`——强扭成 CheckBox 会和 FluentTheme 的 CheckBox 主题打架
+      （勾选框的 parts 与视觉树都被牵进来）。
+
+      ⚠ ToggleSwitch 的实现要求模板里存在 `PART_MovingKnobs`（Panel）与
+      `PART_SwitchKnob`（Panel），缺失会在 OnApplyTemplate 时抛 KeyNotFoundException。
+      这里用两个 0×0 的 Canvas 占位：Avalonia 自带的「拖动拨块切换」手势被关掉，
+      拨块位移改由下面的 Transition 表达（钉住 Windows 端的观感，那边也没有拖拽）。
+
+      内容：本键的 `Content` 就是标签（Windows 端也是 `Content`），
+      间距 8（Thickness.SwitchContentMargin）；`Content` 为空时边距要收成 0，
+      否则轨道右缘会比同页的版本号 / chevron 早 8 DIP 收边、控件列对不齐——
+      由 ContentPresenter 自带的 `:empty` 伪类表达。
+    -->
+    <ControlTheme x:Key="ToggleSwitchStyle" TargetType="ToggleSwitch">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 轨道 40×20 R6。默认皮肤与 Porcelain 是 Brush.Surface 底 +
+                         BorderStrong 边，Ceramic 是 Glaze.Track.Concave（凹槽）。 -->
+                    <Border x:Name="SwitchTrack"
+                            Grid.Column="0"
+                            Width="{DynamicResource Size.SwitchTrackWidth}"
+                            Height="{DynamicResource Size.SwitchTrackHeight}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.BorderStrong}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            VerticalAlignment="Center">
+                        <Grid>
+                            <!-- 开启态用叠加层淡入，而不是直接换 Background：
+                                 共享笔刷不能做 ColorAnimation，叠加层还能让
+                                 「槽底变色」与「拨块滑动」两条时间线各走各的。 -->
+                            <Border x:Name="SwitchOnLayer"
+                                    Background="{DynamicResource Brush.Accent}"
+                                    CornerRadius="{DynamicResource Radius.SwitchTrackInner}"
+                                    Opacity="0"
+                                    IsHitTestVisible="False">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity"
+                                                          Duration="{DynamicResource Motion.Duration.Fast}" />
+                                    </Transitions>
+                                </Border.Transitions>
+                            </Border>
+
+                            <!-- 拨块：14×14 R3（6 − 3 = 3，见同心圆角）。开启态填骨白
+                                 Brush.Surface 而不是纯白：这是一块实体面，全套界面里
+                                 所有的面都是同一支 Surface，纯白会是唯一的例外。 -->
+                            <Border x:Name="SwitchThumb"
+                                    Width="{DynamicResource Size.SwitchThumb}"
+                                    Height="{DynamicResource Size.SwitchThumb}"
+                                    CornerRadius="{DynamicResource Radius.SwitchThumb}"
+                                    Background="{DynamicResource Brush.BorderStrong}"
+                                    HorizontalAlignment="Left"
+                                    Margin="{DynamicResource Thickness.SwitchThumbLeft}"
+                                    RenderTransform="translate(0px, 0px)">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <TransformOperationsTransition Property="RenderTransform"
+                                                                       Duration="{DynamicResource Motion.Duration.Base}"
+                                                                       Easing="{DynamicResource Motion.Ease.Out}" />
+                                    </Transitions>
+                                </Border.Transitions>
+                            </Border>
+
+                            <!-- ToggleSwitch 要求的两个 PART（0×0 占位，不参与绘制）。
+                                 缺一个就会在 OnApplyTemplate 里抛异常。 -->
+                            <Canvas x:Name="PART_SwitchKnob" Width="0" Height="0"
+                                    IsHitTestVisible="False" />
+                            <Canvas x:Name="PART_MovingKnobs" Width="0" Height="0"
+                                    IsHitTestVisible="False" />
+                        </Grid>
+                    </Border>
+
+                    <ContentPresenter x:Name="SwitchContent"
+                                      Grid.Column="1"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Margin="{DynamicResource Thickness.SwitchContentMargin}"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <!-- 开启：轨道边换成 Accent，槽底淡入 Accent，拨块滑出行程 20 并换成骨白。
+                 三条同时发生，但只有位移走 Base（180ms）+ EaseOut，颜色都走 Fast
+                 （100ms）——「有位移的慢慢来，只换颜色的快一点」。 -->
+            <Style Selector="^:checked /template/ Border#SwitchTrack">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+            </Style>
+            <Style Selector="^:checked /template/ Border#SwitchOnLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <Style Selector="^:checked /template/ Border#SwitchThumb">
+                <Setter Property="RenderTransform"
+                        Value="translate(20px, 0px)" />
+                <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            </Style>
+
+            <!-- Content 为空时收掉内容边距（对应 Windows 的
+                 `<Trigger Property="HasContent" Value="False">`）。 -->
+            <Style Selector="^ /template/ ContentPresenter#SwitchContent:empty">
+                <Setter Property="Margin" Value="{DynamicResource Thickness.None}" />
+            </Style>
+
+            <!-- 禁用态换笔刷而不是压 Opacity：混色会算出令牌表外的颜色。
+                 拨块在禁用态也不投影（透明皮肤本来就没有影）。 -->
+            <Style Selector="^:disabled">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                <Setter Property="Cursor" Value="Arrow" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#SwitchTrack">
+                <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#SwitchOnLayer">
+                <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#SwitchThumb">
+                <Setter Property="Background" Value="{DynamicResource Brush.BorderStrong}" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!--
+    ================================================================================
+    三套皮肤差异对照（哪些被令牌吸收了，哪些是刻意的结构差）
+    ================================================================================
+
+    [已吸收 —— 同一份模板，换肤即变]
+      · 模式开关轨道底       SurfaceSunken / Glaze.Well.Concave / SurfaceSunken
+      · 模式开关滑块底+边    Surface+Border / Glaze.Surface.Convex+BorderStrong / AccentText
+      · 模式开关滑块投影     Shadow.Contact（Porcelain 是 opacity 0 的空影）
+      · 模式开关文案色       :checked 由皮肤字典覆盖 Foreground
+      · 开关轨道底           Surface / Glaze.Track.Concave / SurfaceSunken
+      · 开关开启层底         Accent / Glaze.Accent.Concave / AccentText
+      · 开关拨块             BorderStrong / Glaze.Surface.Convex+BorderStrong+投影 / Surface
+      · 分段控件底与选中块   Surface + Background 令牌（Accent / Glaze.Surface.Convex /
+                             AccentText）
+      · 全部时长与缓动       Motion.Duration.* / Motion.Ease.*
+
+    [刻意统一 —— Windows 端三套皮肤之间本身就有细微差，这里取三套共有的那一档]
+      1. 分段控件 hover 浮起层：DesignTokens/Porcelain = Brush.Background；
+         Ceramic 没有 hover 层（它靠选中块升起表达）。这里保留 hover 层。
+      2. 分段控件选中的文字色：DesignTokens = White，Porcelain = Brush.Surface。
+         这里取 White（默认皮肤那一档）。
+      3. 分段控件「选中 + 禁用」的底色/边色：DesignTokens = Border/BorderStrong、
+         Ceramic = Glaze.Bisque/BorderStrong、Porcelain = BorderStrong/BorderStrong。
+         这里取 Border + BorderStrong。禁用态在本产品里不出现（外观三档永远可选），
+         这一条只影响组件库的完整性。
+      4. 模式开关的按压反馈：Windows 端没有这一条（按下只走两格的 hover）。
+         这里补了 `:pressed` → SurfaceSunken，因为它和拨块滑动是同一拍动作，
+         少了会读成「点了没反应」。要严格对齐就把 ModeSwitchItemStyle 里的
+         `^:pressed` 那一段删掉。
+
+    [拿不准 / 需要主会话复核]
+      · 位移动画用的是 `Transitions`（属性值变化时补间）而不是 WPF 的
+        `Storyboard`。三套皮肤的时长与缓动都取自令牌，但 **Porcelain 的
+        `Motion.Ease.Slide` 是 CubicEase 而非默认皮肤的 CubicEase、
+        Ceramic 的是 BackEase(Amplitude=0.22)** —— 参照 Windows 端，模式开关滑块
+        在 Ceramic 里是「过冲一点再坐稳」，这里由 `Motion.Ease.Slide` 自动获得，
+        不需要额外分支。
+      · `Thickness.SegmentMiddle` 只在三套皮肤的中间档用到；生成器已把它写成
+        `1,1,0,1`（与左右格同一份厚度，接缝处只画一条）。
+    -->
+
+</ResourceDictionary>

@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+    ================================================================================
+    默认皮肤（对应 Windows 端的 Themes/DesignTokens.xaml）
+    ================================================================================
+    这是**皮肤入口**：换肤就是把这个文件整份换成 Ceramic.axaml 或 Porcelain.axaml
+    （见 AvaloniaThemeService.cs，全进程唯一允许改 MergedDictionaries 的地方）。
+
+    三套皮肤同骨不同皮：
+      令牌（颜色/尺寸/间距/圆角/动效）各自一份，由 tools/port_theme_tokens.py 从
+      Windows 端的三份字典机械生成，取值逐值相同；
+      样式（40 多个 key）**共用同一批文件**——它们的材质差异全部经令牌表达，
+      所以一份样式同时服务三套皮肤。这是移植能保持「原封不动」的前提：
+      样式里不出现任何字面颜色或魔法数字。
+
+    Avalonia 与 WPF 的一处装配差异：这里不能用 `<ResourceDictionary Source="...">`
+    （那个属性在 Avalonia 里不存在），必须用 `<ResourceInclude Source="avares://…">`。
+    ================================================================================
+    -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://myproxy-gui/Themes/DesignTokens.Tokens.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/TextStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/LinkButtonStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/InputAndButtonStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/SwitchAndSegmentedStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/LayoutStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/OrbStyles.axaml" />
+    </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>

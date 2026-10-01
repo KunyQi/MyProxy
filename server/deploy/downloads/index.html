@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MyProxy · 下载</title>
+  <style>
+    :root { --paper: #faf8f1; --ink: #25231f; --muted: #706b61; --rule: #c9c3b7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eae6dc; color: var(--ink); font-family: system-ui, "Microsoft YaHei", sans-serif; -webkit-font-smoothing: antialiased; }
+    .page { width: min(1120px, calc(100% - 96px)); margin: 64px auto; padding: 48px 48px 28px; background: var(--paper); border: 1px solid var(--rule); box-shadow: 4px 4px 0 #ded8cb; }
+    .edition { display: flex; justify-content: space-between; gap: 20px; margin: 0; padding-bottom: 18px; border-bottom: 1px solid var(--ink); font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+    .masthead { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 32px; padding: 44px 0 42px; border-bottom: 2px solid var(--ink); }
+    h1, h2 { font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "SimSun", serif; font-weight: 600; letter-spacing: 0; }
+    h1 { margin: 0; font-size: 76px; line-height: 1.15; }
+    .intro { padding-bottom: 3px; }
+    .intro p { margin: 0; font-size: 20px; line-height: 1.65; }
+    .intro .caption { margin-top: 10px; font-size: 13px; color: var(--muted); }
+    .downloads { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 36px 0 40px; }
+    .download { min-width: 0; display: flex; flex-direction: column; padding: 0 24px; }
+    .download:first-child { padding-left: 0; }
+    .download:last-child { padding-right: 0; }
+    .download + .download { border-left: 1px solid var(--rule); }
+    .number { margin: 0 0 22px; font-family: ui-monospace, "Consolas", monospace; font-size: 12px; color: var(--muted); }
+    h2 { margin: 0; font-size: 32px; line-height: 1.3; }
+    .requirements { margin: 12px 0 28px; font-size: 14px; line-height: 1.7; color: var(--muted); }
+    .action { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: auto; min-height: 56px; padding: 14px 18px; border: 1px solid var(--ink); color: var(--ink); background: transparent; text-decoration: none; font-size: 15px; line-height: 1.6; transition: background-color .15s, color .15s; }
+    .action:hover { background: var(--ink); color: var(--paper); }
+    .action:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+    .arrow { font-size: 20px; line-height: 1; }
+    .getting-started { padding: 24px 0 28px; border-top: 1px solid var(--rule); }
+    .getting-started h2 { font-family: inherit; font-size: 16px; font-weight: 600; }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 18px 0 0; padding-left: 22px; }
+    .steps li { padding-left: 4px; font-size: 14px; line-height: 1.8; }
+    .steps p { margin: 4px 0 0; color: var(--muted); }
+    footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; line-height: 1.8; }
+    footer p { margin: 0; }
+    footer a { color: inherit; text-underline-offset: 3px; }
+    footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+    @media (max-width: 860px) {
+      body { background: var(--paper); }
+      .page { width: 100%; margin: 0; padding: 28px 24px 24px; border: 0; box-shadow: none; }
+      .edition { font-size: 11px; padding-bottom: 16px; }
+      .masthead { grid-template-columns: 1fr; gap: 22px; padding: 32px 0; }
+      h1 { font-size: 60px; }
+      .intro p { font-size: 18px; }
+      .intro .caption { margin-top: 6px; }
+      .downloads { grid-template-columns: 1fr; margin: 28px 0 32px; }
+      .download { padding: 0 0 28px; }
+      .download + .download { padding: 28px 0 0; border-left: 0; border-top: 1px solid var(--rule); }
+      .download:last-child { padding-bottom: 0; }
+      .number { margin-bottom: 14px; }
+      h2 { font-size: 30px; }
+      .requirements { margin: 10px 0 20px; }
+      .steps { grid-template-columns: 1fr; gap: 14px; }
+      footer { flex-direction: column; gap: 4px; }
+    }
+    @media (max-width: 380px) { .page { padding: 24px 20px; } h1 { font-size: 52px; } }
+    @media (prefers-reduced-motion: reduce) { .action { transition: none; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <p class="edition"><span>客户端 · 下载</span><span>0.1.0</span></p>
+    <header class="masthead">
+      <h1>MyProxy</h1>
+      <div class="intro"><p>一个开关，开始连接。</p><p class="caption">选择你的设备。首次使用时输入配对码。</p></div>
+    </header>
+    <div class="downloads" aria-label="客户端下载">
+      <section class="download" aria-labelledby="windows-title">
+        <p class="number" aria-hidden="true">01 / WINDOWS</p>
+        <h2 id="windows-title">Windows 版</h2>
+        <p class="requirements">Windows 64 位<br>EXE 应用</p>
+        <a class="action" href="/windows" aria-label="下载 Windows EXE"><span>下载 EXE</span><span class="arrow" aria-hidden="true">↓</span></a>
+      </section>
+      <section class="download" aria-labelledby="android-title">
+        <p class="number" aria-hidden="true">02 / ANDROID</p>
+        <h2 id="android-title">Android 版</h2>
+        <p class="requirements">Android 7.0 及以上 · ARM64<br>APK 应用</p>
+        <a class="action" href="/android" aria-label="下载 Android APK"><span>下载 APK</span><span class="arrow" aria-hidden="true">↓</span></a>
+      </section>
+      <section class="download" aria-labelledby="linux-title">
+        <p class="number" aria-hidden="true">03 / LINUX</p>
+        <h2 id="linux-title">Linux 版</h2>
+        <p class="requirements">Linux x64 桌面<br>tar.gz 压缩包</p>
+        <a class="action" href="/linux" aria-label="下载 Linux x64 压缩包"><span>下载 Linux</span><span class="arrow" aria-hidden="true">↓</span></a>
+      </section>
+    </div>
+    <section class="getting-started" aria-labelledby="getting-started-title">
+      <h2 id="getting-started-title">从下载到连接，只需三步</h2>
+      <ol class="steps">
+        <li><strong>下载并安装</strong><p>选择适合设备的版本，按安装说明完成安装。</p></li>
+        <li><strong>输入配对码</strong><p>使用部署者提供的配对码，完成首次绑定。</p></li>
+        <li><strong>点击连接开关</strong><p>以后打开客户端，即可开启或停止连接。</p></li>
+      </ol>
+    </section>
+    <footer>
+      <p>MyProxy · 无广告</p>
+      <div>
+        <p>安装包由部署者提供。请选择与你设备对应的版本。</p>
+        <p><a href="https://github.com/KunyQi/MyProxy">源码</a> · <a href="https://github.com/KunyQi/MyProxy/blob/main/THIRD_PARTY_NOTICES.md">第三方许可</a></p>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

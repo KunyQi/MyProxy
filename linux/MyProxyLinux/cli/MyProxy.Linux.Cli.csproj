@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Linux 命令行客户端。
+
+    它是**守护进程的客户端**，不是连接的另一个持有者：每条命令都通过
+    runtime/control.sock 发给守护进程（`myproxy run`），由它独占内核与系统代理。
+    唯一在本进程里跑完整生命周期的是 `myproxy run` 自己。
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>myproxy</AssemblyName>
+    <RootNamespace>MyProxy.Cli</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\MyProxy.Linux.Core.csproj" />
+  </ItemGroup>
+
+</Project>

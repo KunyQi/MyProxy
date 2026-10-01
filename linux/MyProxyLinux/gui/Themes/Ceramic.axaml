@@ -1,0 +1,24 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+    ================================================================================
+    釉陶（Ceramic）—— 皮肤入口，对应 Windows 端的 Themes/Ceramic.xaml
+    ================================================================================
+    与默认皮肤**同骨不同皮**：间距、尺寸、字号、图标坐标逐值相同，分岔在材质模型上——
+    界面是一件上了釉的胎体（凸起受光、凹陷落影、按下真的陷进去）。
+
+    这里只有令牌与默认皮肤不同（Ceramic.Tokens.axaml），样式文件是共用的那七个。
+    换句话说：Windows 端在三份字典里各写了一遍的 45 个样式，在 Linux 端只存在一份，
+    差异全部落在令牌上。少掉的 200 多 KB 是重复，不是行为。
+    ================================================================================
+    -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://myproxy-gui/Themes/Ceramic.Tokens.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/TextStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/LinkButtonStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/InputAndButtonStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/SwitchAndSegmentedStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/LayoutStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/OrbStyles.axaml" />
+    </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>

@@ -1,0 +1,529 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+
+    <!-- ================================================================
+         焦点环（FocusRingStyle 的等价物）
+         ================================================================
+         Windows 端：能量球与检测按钮都挂 FocusVisualStyle="{StaticResource FocusRingStyle}"
+         （1px Brush.TextPrimary + Radius.SM + 四边各留 1）。
+         Avalonia 侧：FocusRingStyle 这个 key 归文本/链接族那份交付（避免两个文件定义同一个
+         key），所以本文件**不导出** FocusRingStyle，而是在这两个按钮的模板里各内联一层
+         Border#FocusRing，取值与 DesignTokens.xaml 的 FocusRingStyle 逐值相同，由
+         :focus-visible（键盘聚焦，与 WPF 的 FocusVisualStyle 同语义）点亮。
+         环放在 PressHost 之外：WPF 的焦点视觉画在 adorner 层，不跟着按压/呼吸缩放。
+
+         ⚠ 令牌缺口：默认皮肤用 Brush.TextPrimary，而 Ceramic/Porcelain 两套皮肤用的是
+         Brush.AccentText。现有令牌里没有哪一支能同时满足三者，这里按**权威来源（默认皮肤）**
+         取 TextPrimary；要让另外两套皮肤也逐值一致，需要生成器补一支别名令牌
+         （默认皮肤 → Color.TextPrimary，另两套 → Color.AccentText），详见交付报告。 -->
+
+    <!-- ================================================================
+         能量球（OrbButtonStyle）—— 主操作与状态指示合一
+         ================================================================ -->
+    <ControlTheme x:Key="OrbButtonStyle" TargetType="Button">
+        <!-- 196 = Size.OrbHalo：既是点击热区，也是 MainView 里能量球那条 band 的高度。
+             光晕比它小（162），可见的环 = (162 − 140) ÷ 2 = 11px。 -->
+        <Setter Property="Width" Value="{DynamicResource Size.OrbHalo}" />
+        <Setter Property="Height" Value="{DynamicResource Size.OrbHalo}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+
+        <Setter Property="Template">
+            <ControlTemplate TargetType="Button">
+                <!-- 根：焦点环与内容分两层。焦点环放在 PressHost **外面**——WPF 的
+                     FocusVisualStyle 画在 adorner 层，不参与按压/呼吸缩放，这里保持同一语义。 -->
+                <Grid Name="OrbRoot">
+                    <!-- 两层 ScaleTransform：呼吸与按压各占一层，否则两个动画抢同一个属性，
+                         松手回弹会把呼吸的当前相位一并清零，看起来像卡了一下。 -->
+                    <Grid Name="PressHost"
+                          Background="Transparent"
+                          RenderTransformOrigin="50%,50%"
+                          ClipToBounds="False">
+
+                        <!-- 外晕：贴着球缘的一圈细环，呼吸时明灭。未连接时全透明（Opacity=0）。 -->
+                        <Ellipse Name="Halo"
+                                 Width="{DynamicResource Size.OrbGlow}"
+                                 Height="{DynamicResource Size.OrbGlow}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Fill="{DynamicResource Brush.Halo.Accent}"
+                                 Opacity="0"
+                                 IsHitTestVisible="False" />
+
+                        <!-- 承影层：实色圆只为投影存在，被上面的球体完全盖住。
+                             呼吸只放大不缩小（1 → Motion.Orb.BreathScale），所以球永远盖得住这两个
+                             140 的圆，不会在边缘露出白边。 -->
+                        <Ellipse Name="AmbientShadow"
+                                 Width="{DynamicResource Size.Orb}"
+                                 Height="{DynamicResource Size.Orb}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Fill="{DynamicResource Brush.Surface}"
+                                 Effect="{DynamicResource Shadow.OrbAmbient}"
+                                 IsHitTestVisible="False" />
+                        <Ellipse Name="ContactShadow"
+                                 Width="{DynamicResource Size.Orb}"
+                                 Height="{DynamicResource Size.Orb}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Fill="{DynamicResource Brush.Surface}"
+                                 Effect="{DynamicResource Shadow.OrbContact}"
+                                 IsHitTestVisible="False" />
+
+                        <Grid Name="BreathHost"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              RenderTransformOrigin="50%,50%">
+
+                            <!-- 球体：胎体永远是白瓷，颜色只在边缘显现（径向渐变的色标负责这件事，
+                                 不要改成偏心 GradientOrigin）。釉边 1px + 淡一档的状态色。 -->
+                            <Ellipse Name="Orb"
+                                     Width="{DynamicResource Size.Orb}"
+                                     Height="{DynamicResource Size.Orb}"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Fill="{DynamicResource Brush.Orb.Idle}"
+                                     Stroke="{DynamicResource Brush.BorderStrong}"
+                                     StrokeThickness="{DynamicResource Size.GlazeRim}" />
+
+                            <!-- 镜面高光：贴在球体上半，让球读作被单一光源照亮。
+                                 ⚠ 上边距 40 是 Windows 模板里的字面量：令牌 Size.OrbSpecularTop(16)
+                                 在三套皮肤的**任何模板里都没有被引用**（是一支死令牌），照搬令牌反而
+                                 会让高光比 Windows 端高 24px。这里按模板取 40，并把这个令牌缺口写进
+                                 交付报告。高光的水平对齐在 WPF 里靠「显式 Width + 默认 Stretch」推出
+                                 居中，Avalonia 的 Stretch 语义不同，这里显式写 Center 锁死。 -->
+                            <Ellipse Name="Specular"
+                                     Width="{DynamicResource Alias.OrbSpecularWidth}"
+                                     Height="{DynamicResource Alias.OrbSpecularHeight}"
+                                     HorizontalAlignment="{DynamicResource Alias.OrbSpecularAlign}"
+                                     VerticalAlignment="Top"
+                                     Margin="{DynamicResource Alias.OrbSpecularMargin}"
+                                     Fill="{DynamicResource Brush.Orb.Specular}"
+                                     IsHitTestVisible="False" />
+
+                            <!-- 电源图标：40×40 盒内的两条 Path（圆弧 + 竖轴），坐标在令牌里只出现一次。
+                                 Stretch 保持默认的 None —— Avalonia 在 Stretch=None 时不做平移，
+                                 墨迹就落在几何自身的绝对坐标上，与 WPF 的 Path 行为一致
+                                 （已核对 Avalonia 11.3 的 Shape.CalculateSizeAndTransform）。 -->
+                            <Canvas Name="IconCanvas"
+                                    Width="{DynamicResource Size.OrbIcon}"
+                                    Height="{DynamicResource Size.OrbIcon}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsHitTestVisible="False">
+                                <Path Name="PowerArc"
+                                      Data="{DynamicResource Geometry.PowerArc}"
+                                      Stroke="{DynamicResource Brush.TextSecondary}"
+                                      StrokeThickness="{DynamicResource Stroke.OrbIcon}"
+                                      StrokeLineCap="Round" />
+                                <Path Name="PowerStem"
+                                      Data="{DynamicResource Geometry.PowerStem}"
+                                      Stroke="{DynamicResource Brush.TextSecondary}"
+                                      StrokeThickness="{DynamicResource Stroke.OrbIcon}"
+                                      StrokeLineCap="Round" />
+                            </Canvas>
+                        </Grid>
+                    </Grid>
+
+                    <!-- 焦点环：与 DesignTokens.xaml 的 FocusRingStyle 逐值相同（1px Brush.TextPrimary
+                         + Radius.SM + 四边各留 1）。WPF 用 FocusVisualStyle 画在 adorner 层，
+                         Avalonia 里在模板内留一层，靠 :focus-visible（键盘聚焦）点亮。
+                         取值说明与令牌缺口见文件开头「焦点环」一节。 -->
+                    <Border Name="FocusRing"
+                            BorderBrush="{DynamicResource Alias.FocusRingBrush}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsVisible="False"
+                            IsHitTestVisible="False" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <!-- 键盘焦点环。必须是伪类选择器（StyleTrigger 优先级）才盖得过模板里的 IsVisible=False；
+             纯 `^ /template/ …` 这种普通选择器优先级低于模板值，点不亮它。 -->
+        <Style Selector="^:focus-visible /template/ Border#FocusRing">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <!-- ============ 静止态（idle）============
+             Windows 端没有 idle 触发器：没有状态类时用的就是模板默认值。这里把默认值再写一遍，
+             一是让状态契约在文件里可见，二是它声明在最前，后面的状态类必然覆盖它。 -->
+        <Style Selector="^.idle /template/ Ellipse#Orb">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Orb.Idle}" />
+            <Setter Property="Stroke" Value="{DynamicResource Brush.BorderStrong}" />
+        </Style>
+        <Style Selector="^.idle /template/ Path#PowerArc, ^.idle /template/ Path#PowerStem">
+            <Setter Property="Stroke" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+
+        <!-- ============ 已连接（connected）：翠绿球 + 平缓呼吸 ============
+             状态色分两族：球面用面积色 Brush.Orb.*（够亮才好看），釉边用 Brush.*Glow
+             （比面积色淡一档；用面积色会立刻读成「描了个边的白球」），图标用 Brush.*Text
+             （过 4.5:1 的文字色）。三族令牌在默认皮肤里都是逐值对应的。 -->
+        <Style Selector="^.connected /template/ Ellipse#Orb">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Orb.Connected}" />
+            <Setter Property="Stroke" Value="{DynamicResource Alias.OrbRim.Connected}" />
+        </Style>
+        <Style Selector="^.connected /template/ Ellipse#Halo">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Halo.Success}" />
+        </Style>
+        <Style Selector="^.connected /template/ Path#PowerArc, ^.connected /template/ Path#PowerStem">
+            <Setter Property="Stroke" Value="{DynamicResource Brush.SuccessText}" />
+        </Style>
+
+        <!-- 呼吸：**只对已连接持续，静止态不跑**。
+             WPF 用 MultiDataTrigger(State=Connected && CanAnimate) 起停 Storyboard；
+             Avalonia 没有 EnterActions/ExitActions，改成「类选择器命中即动」：
+             类一去，动画随之卸载，属性回落到模板值（Halo → Opacity=0，BreathHost → 无缩放）。
+             `.still` 就是 CanAnimate 的钩子。
+             ⚠ 透明度那一半取令牌（Motion.Orb.BreathAlphaFrom/To）；缩放那一半只能写字面量：
+                Avalonia 的 RenderTransform 动画吃的是 TransformOperations 文本，
+                没法把 {DynamicResource Motion.Orb.BreathScale} 这个 double 插进 "scale(...)"。
+                默认皮肤 1.05 / Ceramic 1.04 / Porcelain 1.02，这里取默认皮肤的 1.05。 -->
+        <Style Selector="^.connected:not(.still) /template/ Grid#BreathHost">
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform"
+                                                           Duration="{DynamicResource Motion.Duration.Breath}" />
+                        </Transitions>
+                    </Setter>
+                    <Setter Property="RenderTransform" Value="scale(1.02)" />
+            <Style.Animations>
+                <Animation Duration="{DynamicResource Motion.Duration.Breath}"
+                           IterationCount="INFINITE"
+                           PlaybackDirection="Alternate"
+                           Easing="{DynamicResource Motion.Ease.Breath}">
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <!-- 呼吸的主体是**光晕明灭，不是球体胀缩**：2.4s 周期下 5% 的几何位移在屏幕上只够
+             个位数可分辨级数，透明度是连续量，同样时长能给出 20+ 级。缩放只做辅助。 -->
+        <Style Selector="^.connected:not(.still) /template/ Ellipse#Halo">
+            <Style.Animations>
+                <Animation Duration="{DynamicResource Motion.Duration.Breath}"
+                           IterationCount="INFINITE"
+                           PlaybackDirection="Alternate"
+                           Easing="{DynamicResource Motion.Ease.Breath}">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="{DynamicResource Motion.Orb.BreathAlphaFrom}" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="{DynamicResource Motion.Orb.BreathAlphaTo}" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- ============ 连接中（connecting）：蔚蓝球 + 急促脉冲 ============
+             与呼吸同一套结构，只换成 Pulse 的时长与透明度区间。缓动仍是 Motion.Ease.Breath：
+             Windows 端两处都用 SineEase(EaseInOut)，令牌里**没有** Motion.Ease.Pulse
+             （这支配额在令牌表里不存在，别去找）。 -->
+        <Style Selector="^.connecting /template/ Ellipse#Orb">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Orb.Accent}" />
+            <Setter Property="Stroke" Value="{DynamicResource Alias.OrbRim.Connecting}" />
+        </Style>
+        <Style Selector="^.connecting /template/ Ellipse#Halo">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Halo.Accent}" />
+        </Style>
+        <Style Selector="^.connecting /template/ Path#PowerArc, ^.connecting /template/ Path#PowerStem">
+            <Setter Property="Stroke" Value="{DynamicResource Brush.AccentText}" />
+        </Style>
+        <Style Selector="^.connecting:not(.still) /template/ Grid#BreathHost">
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform"
+                                                           Duration="{DynamicResource Motion.Duration.Breath}" />
+                        </Transitions>
+                    </Setter>
+                    <Setter Property="RenderTransform" Value="scale(1.04)" />
+            <Style.Animations>
+                <Animation Duration="{DynamicResource Motion.Duration.Pulse}"
+                           IterationCount="INFINITE"
+                           PlaybackDirection="Alternate"
+                           Easing="{DynamicResource Motion.Ease.Breath}">
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="^.connecting:not(.still) /template/ Ellipse#Halo">
+            <Style.Animations>
+                <Animation Duration="{DynamicResource Motion.Duration.Pulse}"
+                           IterationCount="INFINITE"
+                           PlaybackDirection="Alternate"
+                           Easing="{DynamicResource Motion.Ease.Breath}">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="{DynamicResource Motion.Orb.PulseAlphaFrom}" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="{DynamicResource Motion.Orb.PulseAlphaTo}" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- ============ 断开中（disconnecting）============
+             Windows 端这一态只做三件事：蓝釉、蓝图标、球体压到 0.6。**不动 Halo**——光晕既不换色
+             也不点亮，读起来是「正在收」。 -->
+        <Style Selector="^.disconnecting /template/ Ellipse#Orb">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Orb.Accent}" />
+            <Setter Property="Stroke" Value="{DynamicResource Alias.OrbRim.Connecting}" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="^.disconnecting /template/ Path#PowerArc, ^.disconnecting /template/ Path#PowerStem">
+            <Setter Property="Stroke" Value="{DynamicResource Brush.AccentText}" />
+        </Style>
+
+        <!-- ============ 失败（error）：陶红球 + 光晕常亮 0.10 ============
+             0.10 是 Windows 端的字面量（令牌表里没有它），这里照搬；光晕不呼吸。 -->
+        <Style Selector="^.error /template/ Ellipse#Orb">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Orb.Error}" />
+            <Setter Property="Stroke" Value="{DynamicResource Alias.OrbRim.Error}" />
+        </Style>
+        <Style Selector="^.error /template/ Ellipse#Halo">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Halo.Error}" />
+            <Setter Property="Opacity" Value="0.10" />
+        </Style>
+        <Style Selector="^.error /template/ Path#PowerArc, ^.error /template/ Path#PowerStem">
+            <Setter Property="Stroke" Value="{DynamicResource Brush.ErrorText}" />
+        </Style>
+
+        <!-- ============ 已连接 + 自检结论为坏（checkbad）：把球改回红 ============
+             声明在 connected 之后：Avalonia 同优先级下后声明者胜，这条要能盖掉绿球。
+             注意契约——它必须与 connected 同时挂，单独挂没有意义（Windows 端是
+             MultiDataTrigger 的两条 Condition）。 -->
+        <Style Selector="^.checkbad /template/ Ellipse#Orb">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Orb.Error}" />
+            <Setter Property="Stroke" Value="{DynamicResource Alias.OrbRim.Error}" />
+        </Style>
+        <Style Selector="^.checkbad /template/ Ellipse#Halo">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Halo.Error}" />
+        </Style>
+        <Style Selector="^.checkbad /template/ Path#PowerArc, ^.checkbad /template/ Path#PowerStem">
+            <Setter Property="Stroke" Value="{DynamicResource Brush.ErrorText}" />
+        </Style>
+
+        <!-- ============ 悬停 / 按下 ============
+             WPF 是一个 PressScale 上挂四种动画：hover 进/出 180ms CubicEase.Out、
+             按下 90ms 线性、松手 600ms ElasticEase。
+             Avalonia 没有 ExitActions，所以这里拆成：
+               · 悬停与松手交给 RenderTransform 的 TransformOperationsTransition
+                 （Duration=Motion.Duration.Base, Easing=Motion.Ease.Out → 悬停进/出与 WPF 逐值一致）；
+               · 按下用一次性的 Style.Animations（90ms 线性，与 WPF 的按下 EnterActions 一致），
+                 FillMode=Forward 让 0.93 在按住期间保持住。
+             ⚠ 松手回弹因此是 180ms Ease.Out，而不是 WPF 的 600ms 弹性——这是 Avalonia 表达
+                不了「退出动画」的直接后果。要弹性手感就把下面 Transition 的 Duration/Easing
+                换成 Motion.Duration.Spring / Motion.Ease.Spring（三套皮肤都有这两支令牌；
+                Porcelain 的 Spring 是 140ms CubicEase，正好对上它「按下几乎不动、松手不回弹」）。
+             ⚠ 按下深度 0.93 / 悬停放大 1.02 在三套皮肤里是三个不同的字面量
+                （默认 0.93+1.02 / Ceramic 0.95+1.02 / Porcelain 0.98+不放大），令牌表里没有它们，
+                这里取默认皮肤的值，缺口写进交付报告。 -->
+        <Style Selector="^ /template/ Grid#PressHost">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform"
+                                                   Duration="{DynamicResource Motion.Duration.Base}"
+                                                   Easing="{DynamicResource Motion.Ease.Out}" />
+                </Transitions>
+            </Setter>
+        </Style>
+                <Style Selector="^:pointerover /template/ Grid#PressHost">
+            <Setter Property="RenderTransform" Value="scale(1.02)" />
+        </Style>
+        <!-- WPF 的 hover 触发器里还有一条 Specular.Opacity=1：那是空操作（模板里没压过它的
+             不透明度，本来就是 1）。照搬留着，免得日后有人改了基础值而这条被忘掉。 -->
+        <Style Selector="^:pointerover /template/ Ellipse#Specular">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="^:pressed /template/ Grid#PressHost">
+            <Style.Animations>
+                <Animation Duration="{DynamicResource Motion.Duration.Press}"
+                           FillMode="Forward">
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- ============ 禁用 ============
+             球压到 0.5、摘掉环境影、光标回到箭头（Windows 端的三条 Setter）。 -->
+        <Style Selector="^:disabled">
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+        <Style Selector="^:disabled /template/ Ellipse#Orb">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <Style Selector="^:disabled /template/ Ellipse#AmbientShadow">
+            <Setter Property="Effect" Value="{x:Null}" />
+        </Style>
+    </ControlTheme>
+
+    <!-- ================================================================
+         连接中 Spinner（ConnectingSpinnerStyle）
+         ================================================================
+         12×12、灰环 + 90° 蓝弧，两者共用半径 5（Ellipse 会自动内缩半个描边，
+         Avalonia 的 Ellipse 同样 Deflate(StrokeThickness/2)，所以这里不要加 Margin）。
+
+         ⚠ Avalonia 方言差异（WPF 没有的坑）：ProgressBar 带
+            [TemplatePart("PART_Indicator", typeof(Border), IsRequired = true)]，且
+            OnApplyTemplate 里用的是 e.NameScope.Get<Border>("PART_Indicator") —— 找不到就
+            **抛 KeyNotFoundException**（WPF 的 GetTemplateChild 只是返回 null）。
+            所以自定义模板里必须留一个不出场的 PART_Indicator，否则这个控件一上身就炸。
+         旋转：WPF 动 RenderTransform.(RotateTransform.Angle)，Avalonia 只能对 RenderTransform
+            整体动 TransformOperations，取 rotate(0deg) → rotate(360deg)。
+         停钟：WPF 用 Trigger Property="IsVisible" 起停 Storyboard；Avalonia 没有这个触发器，
+            这里用 `.still` 类当钩子（View 隐藏 spinner 时顺手加类即可），默认是转的。 -->
+    <ControlTheme x:Key="ConnectingSpinnerStyle" TargetType="ProgressBar">
+        <Setter Property="Width" Value="{DynamicResource Size.Spinner}" />
+        <Setter Property="Height" Value="{DynamicResource Size.Spinner}" />
+        <!-- WPF 的 IsTabStop=False：Avalonia 里让它不可聚焦即可 -->
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate TargetType="ProgressBar">
+                <Grid Name="SpinnerRoot" RenderTransformOrigin="50%,50%">
+                    <!-- 只为满足 TemplatePart 而存在：0 尺寸、不可见，不参与视觉 -->
+                    <Border Name="PART_Indicator"
+                            Width="0"
+                            Height="0"
+                            IsVisible="False" />
+                    <Ellipse Stroke="{DynamicResource Brush.BorderStrong}"
+                             StrokeThickness="{DynamicResource Stroke.Spinner}" />
+                    <Path Data="{DynamicResource Geometry.SpinnerArc}"
+                          Stroke="{DynamicResource Brush.Connecting}"
+                          StrokeThickness="{DynamicResource Stroke.Spinner}"
+                          StrokeLineCap="Round" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <!-- 匀速旋转（Windows 端没给缓动），周期取 Motion.Duration.SpinnerCycle。 -->
+        <Style Selector="^:not(.still) /template/ Grid#SpinnerRoot">
+            <Style.Animations>
+                <Animation Duration="{DynamicResource Motion.Duration.SpinnerCycle}"
+                           IterationCount="INFINITE">
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </ControlTheme>
+
+    <!-- ================================================================
+         检测按钮（CheckButtonStyle）—— 浮空白胶囊
+         ================================================================
+         结构照搬默认皮肤：Grid > AmbientLayer(散影) > ContactLayer(接触影) > ContentPresenter。
+         唯一的结构调整：1px 的 Brush.Border 边从 ContactLayer **挪到 AmbientLayer**。
+         像素结果与 Windows 端完全相同（两层同心、边就在胶囊缘上），但这样 Ceramic 的釉边
+         （Rim/Shade 两个 1px 单边层）与这道边重合，不会在胶囊上出现两条相距 1px 的描边。
+
+         Ceramic 的釉面令牌（Brush.Glaze.* / Thickness.Rim*）只有那一套皮肤提供：
+         在默认皮肤与 Porcelain 下它们解析不到，BorderBrush 保持 null、BorderThickness 保持 0，
+         于是这两层什么也不画——这是刻意的「缺失即不画」，不是漏写。 -->
+    <ControlTheme x:Key="CheckButtonStyle" TargetType="Button">
+        <Setter Property="Height" Value="{DynamicResource Size.CheckButton}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Padding" Value="{DynamicResource Thickness.CheckPadding}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+        <Setter Property="Cursor" Value="Hand" />
+
+        <Setter Property="Template">
+            <ControlTemplate TargetType="Button">
+                <Grid Name="CheckRoot">
+                    <!-- 双层 Border = 双层阴影：外层散影拉开与基座的距离，内层接触影收住边缘。
+                         只有两层同时在，控件才读起来是浮着的而不是贴了张纸。 -->
+                    <Border Name="AmbientLayer"
+                            CornerRadius="{DynamicResource Radius.Pill}"
+                            Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.Border}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            Effect="{DynamicResource Shadow.Ambient}">
+                        <Border Name="ContactLayer"
+                                CornerRadius="{DynamicResource Radius.Pill}"
+                                Background="{DynamicResource Brush.Surface}"
+                                Effect="{DynamicResource Shadow.Contact}">
+                            <ContentPresenter Name="Label"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                    </Border>
+
+                    <!-- Ceramic 的釉：顶缘积光 + 底缘暗边（那是这件瓷自己的厚度）。
+                         另两套皮肤没有这两支令牌，于是这两层不画。 -->
+                    <Border Name="Rim"
+                            CornerRadius="{DynamicResource Radius.Pill}"
+                            BorderBrush="{DynamicResource Brush.Glaze.Rim}"
+                            BorderThickness="{DynamicResource Thickness.RimTop}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsHitTestVisible="False" />
+                    <Border Name="Shade"
+                            CornerRadius="{DynamicResource Radius.Pill}"
+                            BorderBrush="{DynamicResource Brush.Glaze.Shade}"
+                            BorderThickness="{DynamicResource Thickness.RimBottom}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsHitTestVisible="False" />
+
+                    <!-- 焦点环：与 DesignTokens.xaml 的 FocusRingStyle 逐值相同。
+                         注意圆角是 Radius.SM(6) 而不是 Radius.Pill——Windows 端的胶囊按钮挂的就是
+                         同一个 FocusRingStyle（fixed 族圆角），这里保持一致。 -->
+                    <Border Name="FocusRing"
+                            BorderBrush="{DynamicResource Alias.FocusRingBrush}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsVisible="False"
+                            IsHitTestVisible="False" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:focus-visible /template/ Border#FocusRing">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <!-- 悬停：填充压深一档。Windows 默认皮肤的悬停与按下都是 SurfaceSunken，
+             区别只在按下时把散影收成接触影（下面那条）。 -->
+        <Style Selector="^:pointerover /template/ Border#ContactLayer">
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSunken}" />
+        </Style>
+
+        <!-- 按下：散影收成接触影 + 填充压深一档；Ceramic 另有釉面翻转
+             （顶缘高光挪到底唇、底缘暗边挪到顶唇）。这两条只写 Ceramic 的令牌，
+             在另两套皮肤下 BorderBrush 为 null、厚度为 0，等于不生效。 -->
+        <Style Selector="^:pressed /template/ Border#AmbientLayer">
+            <Setter Property="Effect" Value="{DynamicResource Shadow.Contact}" />
+        </Style>
+        <Style Selector="^:pressed /template/ Border#ContactLayer">
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSunken}" />
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Rim">
+            <Setter Property="BorderThickness" Value="{DynamicResource Thickness.RimBottom}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Glaze.Bounce}" />
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Shade">
+            <Setter Property="BorderThickness" Value="{DynamicResource Thickness.RimTop}" />
+        </Style>
+
+        <!-- 禁用：文字色退到 TextDisabled、两层影都摘掉、填充保持压深的那一档，
+             釉边整层撤掉（Ceramic 的规矩：没有釉的地方就没有高光与暗边）。 -->
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#AmbientLayer">
+            <Setter Property="Effect" Value="{x:Null}" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#ContactLayer">
+            <Setter Property="Effect" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSunken}" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#Rim">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#Shade">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

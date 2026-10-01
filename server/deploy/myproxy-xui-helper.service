@@ -1,0 +1,43 @@
+[Unit]
+Description=MyProxy x-ui privileged helper
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/myproxy-api
+ExecStart=/usr/bin/python3 -m myproxy_server.xui_helper --socket /run/myproxy/xui-helper.sock
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=MYPROXY_XUI_HELPER_SOCKET=/run/myproxy/xui-helper.sock
+Environment=MYPROXY_DEPLOYMENT_CONFIG=/opt/myproxy-api/deployment.json
+EnvironmentFile=/etc/myproxy-api/xui-helper.env
+Restart=on-failure
+RestartSec=3
+User=root
+Group=root
+UMask=0077
+RuntimeDirectory=myproxy
+RuntimeDirectoryMode=0750
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/etc/myproxy-api /etc/myproxy
+ReadWritePaths=/etc/x-ui /run/myproxy
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectClock=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

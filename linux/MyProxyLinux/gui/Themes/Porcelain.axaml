@@ -1,0 +1,20 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+    ================================================================================
+    瓷白（Porcelain）—— 皮肤入口，对应 Windows 端的 Themes/Porcelain.xaml
+    ================================================================================
+    三套皮肤里最「静」的一套：材质对比最弱，靠边线与灰阶分层。
+    间距、尺寸、字号、图标坐标与另两套逐值相同，只有令牌不同。
+    ================================================================================
+    -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://myproxy-gui/Themes/Porcelain.Tokens.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/TextStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/LinkButtonStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/InputAndButtonStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/SwitchAndSegmentedStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/LayoutStyles.axaml" />
+        <ResourceInclude Source="avares://myproxy-gui/Themes/OrbStyles.axaml" />
+    </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>

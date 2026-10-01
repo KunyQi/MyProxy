@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      必须与 ui/theme/Color.kt 的 `Background` 逐字节相同。这是冷启动首帧
+      （Compose 还没画出来时的 windowBackground）和 API 24–28 上系统栏的底色；
+      先前它是 #F7F7F8 而 Compose 画 #FCFBF9，于是启动时闪一下，
+      而没有自绘背景的页面整页都是另一个白。
+    -->
+    <color name="window_background">#FCFBF9</color>
+
+    <color name="ic_launcher_background">#3B6FA0</color>
+</resources>

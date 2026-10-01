@@ -1,0 +1,300 @@
+<UserControl x:Class="MyProxy.Gui.Views.SettingsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="720"
+             UseLayoutRounding="True"
+             Background="{DynamicResource Brush.Background}">
+
+
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Escape" Command="{Binding CloseCommand}" />
+    </UserControl.KeyBindings>
+
+    <UserControl.Resources>
+        <!--
+          「重新绑定」的确认框内容。窗口本身在 code-behind 里造：Avalonia 没有 MessageBox，
+          而这个确认在 Windows 端是 SettingsViewModel.RebindAsync 里的一个系统弹窗；
+          Linux 的 ViewModel 不弹窗，所以它落在视图侧。
+          内容放 XAML 里是为了和本页共用同一套令牌与 ControlTheme（放进 code-behind 就得把
+          尺寸与主题一条条手工查表）。
+
+          两个按钮用 IsDefault / IsCancel 自我标识：code-behind 在内容根上收冒泡上来的 Click，
+          按 IsDefault 判断是「确定」还是「取消」——不依赖名字查找，模板里也不挂事件处理器。
+
+          文案与 Windows 端逐字一致：标题 MyProxy，正文「重新绑定将停止代理并清除当前绑定，是否继续？」，
+          OKCancel。按钮文字在 Windows 上由系统弹窗给出，Linux 没有系统弹窗，
+          等价物是中文 Windows 的「确定 / 取消」。
+        -->
+        <DataTemplate x:Key="RebindConfirmContent">
+            <Border Padding="{DynamicResource Thickness.ButtonPadding}">
+                <StackPanel Width="{DynamicResource Size.ContentWidth}">
+                    <Border Height="{DynamicResource Space.LG}" />
+                    <TextBlock Text="重新绑定将停止代理并清除当前绑定，是否继续？"
+                               TextWrapping="Wrap"
+                               Theme="{DynamicResource BodyTextStyle}" />
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Margin="{DynamicResource Thickness.TopXL}">
+                        <Button Content="取消"
+                                IsCancel="True"
+                                Theme="{DynamicResource SecondaryButtonStyle}" />
+                        <Button Content="确定"
+                                IsDefault="True"
+                                Margin="{DynamicResource Thickness.LeftSM}"
+                                Theme="{DynamicResource PrimaryButtonStyle}" />
+                    </StackPanel>
+                    <Border Height="{DynamicResource Space.MD}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ================= 控制层 ================= -->
+        <Grid Grid.Row="0" Height="{DynamicResource Size.NavBar}">
+            <Grid Width="{DynamicResource Size.ContentWidth}" HorizontalAlignment="Center">
+                <Button Command="{Binding CloseCommand}"
+                        Theme="{DynamicResource BackLinkButtonStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{DynamicResource Geometry.ChevronLeft}"
+                              Theme="{DynamicResource IconChevronStyle}" />
+                        <TextBlock Text="返回"
+                                   Margin="{DynamicResource Thickness.LeftXS}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <TextBlock Text="设置"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Theme="{DynamicResource PageTitleTextStyle}" />
+            </Grid>
+
+            <!-- 通栏：这条线的含义是「换层」，所以它不内缩 -->
+            <Border Height="{DynamicResource Size.Hairline}"
+                    VerticalAlignment="Bottom"
+                    Background="{DynamicResource Brush.Border}" />
+        </Grid>
+
+        <!-- ================= 内容层 ================= -->
+        <Grid Grid.Row="1" Theme="{DynamicResource PageRootStyle}" VerticalAlignment="Top">
+            <StackPanel>
+
+                <!-- 身份放最上：这一页最该先回答的是「这台机器绑的是谁」。
+                     数据早就在 DeviceConfig 里，只是以前从不显示。 -->
+                <StackPanel IsVisible="{Binding DeviceVisibility}">
+                    <Grid Theme="{DynamicResource ReservedLineStyle}">
+                        <TextBlock Text="设备"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Theme="{DynamicResource SectionLabelTextStyle}" />
+                    </Grid>
+                    <Grid Theme="{DynamicResource SettingsRowStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding DeviceName}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   Theme="{DynamicResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="已绑定"
+                                   VerticalAlignment="Center"
+                                   Theme="{DynamicResource SuccessCaptionTextStyle}" />
+                    </Grid>
+                    <TextBlock Text="{Binding BoundAtText}"
+                               Margin="{DynamicResource Thickness.TopXS}"
+                               Theme="{DynamicResource CaptionTextStyle}" />
+                    <Border Height="{DynamicResource Space.XXL}" />
+                </StackPanel>
+
+                <!-- 连接模式：这里只解释两种模式的差别，开关本身留在主页。
+                     把开关也搬过来会让「换个模式」变成两次跳转；而只给两个名字
+                     不给说明，用户就只能靠猜。所以主页给开关，这里给说明。 -->
+                <Grid Theme="{DynamicResource ReservedLineStyle}">
+                    <TextBlock Text="连接模式"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               Theme="{DynamicResource SectionLabelTextStyle}" />
+                </Grid>
+                <Grid Theme="{DynamicResource SettingsRowStyle}">
+                    <TextBlock Text="{Binding RuleModeName}"
+                               VerticalAlignment="Center"
+                               Theme="{DynamicResource BodyTextStyle}" />
+                </Grid>
+                <TextBlock Text="{Binding RuleModeDescription}"
+                           Theme="{DynamicResource CaptionTextStyle}" />
+                <Border Theme="{DynamicResource SettingsGroupRuleStyle}" />
+                <Grid Theme="{DynamicResource SettingsRowStyle}">
+                    <TextBlock Text="{Binding GlobalModeName}"
+                               VerticalAlignment="Center"
+                               Theme="{DynamicResource BodyTextStyle}" />
+                </Grid>
+                <TextBlock Text="{Binding GlobalModeDescription}"
+                           Theme="{DynamicResource CaptionTextStyle}" />
+                <Border Height="{DynamicResource Space.XXL}" />
+
+                <Grid Theme="{DynamicResource ReservedLineStyle}">
+                    <TextBlock Text="通用"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               Theme="{DynamicResource SectionLabelTextStyle}" />
+                </Grid>
+                <Grid Theme="{DynamicResource SettingsRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="自动启动客户端" VerticalAlignment="Center" Theme="{DynamicResource BodyTextStyle}" />
+                    <ToggleSwitch Grid.Column="1"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding AutoStart, Mode=TwoWay}"
+                                  Theme="{DynamicResource ToggleSwitchStyle}" />
+                </Grid>
+                <!-- 内缩到左轴：这条线的含义是「同一组的两行」 -->
+                <Border Theme="{DynamicResource SettingsGroupRuleStyle}" />
+                <Grid Theme="{DynamicResource SettingsRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="启动后自动连接" VerticalAlignment="Center" Theme="{DynamicResource BodyTextStyle}" />
+                    <ToggleSwitch Grid.Column="1"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding AutoConnect, Mode=TwoWay}"
+                                  Theme="{DynamicResource ToggleSwitchStyle}" />
+                </Grid>
+                <Border Theme="{DynamicResource SettingsGroupRuleStyle}" />
+                <!-- 外观：三档材质。这是一条**立刻可见**的设置，所以不做二级页面——
+                     按下去的那一刻整页就换了材质，跳一层页面反而看不见自己改了什么。
+                     它与上面两条同属「通用」：都是这台机器上 MyProxy 自己的偏好。 -->
+                <Grid Theme="{DynamicResource SettingsRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="界面外观" VerticalAlignment="Center" Theme="{DynamicResource BodyTextStyle}" />
+                    <Grid Grid.Column="1"
+                          Width="{DynamicResource Size.ThemePicker}"
+                          Height="{DynamicResource Size.Control}"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <RadioButton Grid.Column="0"
+                                     GroupName="UiTheme"
+                                     Content="经典"
+                                     Theme="{DynamicResource SegmentedItemLeftStyle}"
+                                     IsChecked="{Binding IsThemeClassic, Mode=TwoWay}" />
+                        <RadioButton Grid.Column="1"
+                                     GroupName="UiTheme"
+                                     Content="瓷白"
+                                     Theme="{DynamicResource SegmentedItemMiddleStyle}"
+                                     IsChecked="{Binding IsThemePorcelain, Mode=TwoWay}" />
+                        <RadioButton Grid.Column="2"
+                                     GroupName="UiTheme"
+                                     Content="釉陶"
+                                     Theme="{DynamicResource SegmentedItemRightStyle}"
+                                     IsChecked="{Binding IsThemeCeramic, Mode=TwoWay}" />
+                    </Grid>
+                </Grid>
+
+                <Border Height="{DynamicResource Space.XXL}" />
+
+                <Grid Theme="{DynamicResource ReservedLineStyle}">
+                    <TextBlock Text="更新"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               Theme="{DynamicResource SectionLabelTextStyle}" />
+                </Grid>
+                <Grid Theme="{DynamicResource SettingsRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="自动检查更新" VerticalAlignment="Center" Theme="{DynamicResource BodyTextStyle}" />
+                    <ToggleSwitch Grid.Column="1"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding AutoUpdateCheck, Mode=TwoWay}"
+                                  Theme="{DynamicResource ToggleSwitchStyle}" />
+                </Grid>
+                <!-- 版本不占一行：它是「更新」这件事的当前状态，不是一条可操作项 -->
+                <TextBlock Text="{Binding VersionText}"
+                           Margin="{DynamicResource Thickness.TopXS}"
+                           Theme="{DynamicResource CaptionTextStyle}" />
+
+                <Grid Margin="{DynamicResource Thickness.TopXS}"
+                      Theme="{DynamicResource ReservedLineStyle}">
+                    <Button Content="{Binding UpdateText}"
+                            Command="{Binding UpdateCommand}"
+                            IsVisible="{Binding UpdateVisibility}"
+                            Theme="{DynamicResource InlineLinkButtonStyle}" />
+                </Grid>
+
+                <!-- 第三档距离：明显大于组间，把「重新绑定」推出所有分组之外 -->
+                <Border Height="{DynamicResource Space.Detach}" />
+
+                <!-- Command 仍然绑在 RebindCommand 上（名字与 Windows 端一致），
+                     但前面多了一层确认：Click 处理器把这次点击标成已处理，Button 于是**不会**
+                     自动执行命令（Avalonia 11 Button.OnClick 的判据是 `!e.Handled`），
+                     确认通过后由 code-behind 亲自执行那一条命令。
+                     确认框本身在 Windows 端由 SettingsViewModel.RebindAsync 里的 MessageBox 弹出；
+                     Linux 的 ViewModel 不弹窗，所以那一步搬到了 code-behind。 -->
+                <Button Click="OnRebindClicked"
+                        Command="{Binding RebindCommand}"
+                        Theme="{DynamicResource SettingsNavRowStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="重新绑定"
+                                   VerticalAlignment="Center"
+                                   Theme="{DynamicResource DestructiveTextStyle}" />
+                        <Path Grid.Column="1"
+                              Data="{DynamicResource Geometry.ChevronRight}"
+                              Theme="{DynamicResource IconChevronDestructiveStyle}" />
+                    </Grid>
+                </Button>
+                <TextBlock Text="解绑这台设备，需要重新输入配对码"
+                           Margin="{DynamicResource Thickness.TopXS}"
+                           Theme="{DynamicResource CaptionTextStyle}" />
+
+                <!-- 诊断入口是这一页最不重要的东西：页脚链接，与主页底部的「设置」同一模式 -->
+                <Button Margin="{DynamicResource Thickness.TopXL}"
+                        Content="查看日志"
+                        Command="{Binding OpenLogCommand}"
+                        Theme="{DynamicResource TextLinkButtonStyle}" />
+
+            </StackPanel>
+        </Grid>
+
+        <!-- 错误槽：常驻占位，文字出现/消失时上方版面纹丝不动 -->
+        <Grid Grid.Row="2"
+              Width="{DynamicResource Size.ContentWidth}"
+              HorizontalAlignment="Center"
+              Theme="{DynamicResource ReservedLineStyle}">
+            <TextBlock Text="{Binding ErrorMessage}"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"
+                       TextAlignment="Left"
+                       IsVisible="{Binding ErrorVisibility}"
+                       Theme="{DynamicResource InlineErrorTextStyle}" />
+        </Grid>
+    </Grid>
+</UserControl>

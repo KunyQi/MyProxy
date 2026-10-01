@@ -1,0 +1,170 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+  ================================================================================
+  链接式按钮与纯图标样式：windows/MyProxy/Themes/DesignTokens.xaml 的逐项照搬。
+  ================================================================================
+
+  搬的是这一族：
+    TextLinkButtonStyle        设置页入口等文字链接（基主题，含模板）
+    BackLinkButtonStyle        设置页页眉返回      （BasedOn TextLinkButtonStyle）
+    InlineLinkButtonStyle      组内收尾的一行链接  （BasedOn TextLinkButtonStyle）
+    SettingsNavRowStyle        整行可点的导航行    （BasedOn TextLinkButtonStyle）
+    IconChevronStyle           线性 chevron        （Path）
+    IconChevronDestructiveStyle 危险行的 chevron   （BasedOn IconChevronStyle）
+
+  **用 ControlTheme**（Avalonia 的 ControlTheme 就是 WPF 的 Style：整体替换模板 + 按 key
+  显式引用）。带 x:Key 的 Style 在 Avalonia 里没有任何合法引用方式——StyledElement 只有
+  `Styles`（集合）与 `Theme`（ControlTheme），所以 `Theme="{DynamicResource TextLinkButtonStyle}"`
+  是唯一能同时满足「key 与 Windows 端同名」和「视图能引用」的机制。
+  状态用伪类选择器（`:pointerover` / `:pressed` / `:disabled` / `:focus-visible`），
+  没有 Style.Triggers。基于 Windows 端的 BasedOn 用 `ControlTheme.BasedOn` 真继承。
+  装配：用 ResourceInclude 合并进 ResourceDictionary，**不要**用 StyleInclude。
+
+  取值一律引用令牌，换肤在运行时生效。方言取舍：
+
+  1. Hover 淡入：Windows 端是「叠加层 Opacity 0→1，100ms」的 Storyboard。
+     Avalonia 用 `Transitions` + `DoubleTransition` 表达同一件事，时长仍取令牌
+     （三套皮肤的 Motion.Duration.Fast 分别是 0.100 / 0.140 / 0.150 秒，写死任何
+     一个都会让另外两套皮肤不对）。与 Windows 端一样不加缓动（线性）——WPF 那条
+     DoubleAnimation 也没挂 EasingFunction。
+     Duration 是 TransitionBase 上的 DirectProperty（AvaloniaProperty），而
+     DynamicResource 在非 StyledElement 上会锚到最近的 IResourceProvider（这里是
+     ControlTheme）——两边都按 11.3.2 源码核对过，能取到令牌。**万一集成后发现转场
+     没吃到令牌**（表现为时长退回默认的 0.2s），改这一处为字面量 0:0:0.100 即可，
+     代价是另外两套皮肤各差 40–50ms。
+
+  2. 焦点环：Windows 端靠 `FocusVisualStyle="{StaticResource FocusRingStyle}"`，
+     在 adorner 层按控件边界画一圈 1px 的 Border。Avalonia 没有跨控件的
+     FocusVisualStyle（`Control.FocusAdorner` 是模板，且塞不进本文件负责的族），
+     所以把 FocusRingStyle 的**取值**画进模板里，用 `:focus-visible` 伪类显示：
+         BorderBrush = Brush.TextPrimary（默认皮肤）  BorderThickness = Thickness.Hairline(1)
+         CornerRadius = Radius.SM(6)                  Margin = Thickness.Hairline(1)
+     几何与 WPF 一致：Margin=1 让 1px 描边正好落在控件边界内侧，不会被裁掉。
+     ⚠ 核对结论：FocusRingStyle 用的**不是** Stroke.Icon / Size.Hairline / Brush.Accent，
+     而是 Brush.TextPrimary + Thickness.Hairline + Radius.SM（取自 DesignTokens.xaml 原文）。
+  3. SnapsToDevicePixels="True"（WPF：按设备像素对齐渲染）→ UseLayoutRounding="True"
+     （Avalonia 的最近似物，与三页根上已有的启用方式一致）。Avalonia 没有
+     SnapsToDevicePixels 这个属性。
+  4. 文字链接在 Windows 端没有按下态（没有 PressLayer），这里也不添。
+
+  ⚠ 皮肤级差异（**当前按权威默认皮肤 DesignTokens.xaml 取值**；要逐值一致必须由生成器
+  新增皮肤令牌——样式文件里不自己加 key）：
+    1) TextLinkButtonStyle 的 hover 叠加层底色：
+       默认 Brush.Border(#CFD6D2)｜Ceramic Glaze.Surface.Convex(渐变 #FFFEFC→#FAF7F0→#EAE2D2)
+       **外加 1px Brush.Border 描边**｜Porcelain Brush.SurfaceSunken(#E6E2D9)。
+       需要 `Brush.TextLink.Hover`，以及（若也要 Ceramic 那圈描边）一个
+       Default/Porcelain 为透明、Ceramic 为 Brush.Border 的 `Brush.TextLink.HoverBorder`。
+    2) InlineLinkButtonStyle 的前景色：默认 Brush.Accent(#5B8A9C)｜Ceramic Brush.AccentText(#4E6B5B)｜
+       Porcelain Brush.AccentText(#2C6650)。需要 `Brush.InlineLink.Foreground`。
+    3) 焦点环描边色：默认 Brush.TextPrimary(#2B3432)｜Ceramic / Porcelain Brush.AccentText
+       (#4E6B5B / #2C6650)。需要 `Brush.FocusRing`。
+    （StatusPrimaryTextStyle 那处状态色的差异在 TextStyles.axaml，那里同样按默认皮肤取值。）
+  -->
+
+  <!-- ============ 文字链接按钮 ============
+       Hover 底色必须比页面底色深一档（Brush.Border）：用 Brush.Background 等于没有 hover，
+       页面底色本身就是它。 -->
+  <ControlTheme x:Key="TextLinkButtonStyle" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Thickness.None}" />
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Padding" Value="{DynamicResource Thickness.TextInputPadding}" />
+    <Setter Property="Height" Value="{DynamicResource Size.TextLink}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="{TemplateBinding Background}" UseLayoutRounding="True">
+          <!-- Hover 用叠加层淡入，而不是给 Grid 换 Background：
+               一层一色，底色与 hover 色互不覆盖，淡入（100ms）也才有东西可动。 -->
+          <Border Name="HoverLayer"
+                  Background="{DynamicResource Alias.TextLink.HoverFill}"
+                  CornerRadius="{DynamicResource Radius.SM}"
+                  Opacity="0"
+                  IsHitTestVisible="False">
+            <Border.Transitions>
+              <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{DynamicResource Motion.Duration.Fast}" />
+              </Transitions>
+            </Border.Transitions>
+          </Border>
+          <ContentPresenter Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="Center"
+                            RecognizesAccessKey="True" />
+          <!-- 焦点环：画在最后，才盖得住 hover 层与文字（WPF 的焦点视觉本来就在 adorner 层，
+               压在所有内容之上）。取值见文件头第 2 条。 -->
+          <Border Name="FocusRing"
+                  BorderBrush="{DynamicResource Alias.FocusRingBrush}"
+                  BorderThickness="{DynamicResource Thickness.Hairline}"
+                  CornerRadius="{DynamicResource Radius.SM}"
+                  Margin="{DynamicResource Thickness.Hairline}"
+                  IsVisible="False"
+                  IsHitTestVisible="False" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:disabled">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+    </Style>
+
+    <Style Selector="^:focus-visible /template/ Border#FocusRing">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 设置页页眉返回入口：与分组标签、行标题共享同一条内容左边界 -->
+  <ControlTheme x:Key="BackLinkButtonStyle" TargetType="Button" BasedOn="{StaticResource TextLinkButtonStyle}">
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="{DynamicResource Thickness.None}" />
+  </ControlTheme>
+
+  <!-- 组内收尾的一行文字链接（「发现新版本」）：左对齐，高度等于一行预留槽。
+       前景色按权威默认皮肤取 Brush.Accent（Ceramic / Porcelain 在 Windows 端用
+       Brush.AccentText，见文件头「皮肤级差异」2）。 -->
+  <ControlTheme x:Key="InlineLinkButtonStyle" TargetType="Button" BasedOn="{StaticResource TextLinkButtonStyle}">
+    <Setter Property="Height" Value="{DynamicResource Size.LineSecondary}" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="{DynamicResource Thickness.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+  </ControlTheme>
+
+  <!-- 设置页整行可点的导航行：左标题 / 右 chevron，由 View 提供两列内容 -->
+  <ControlTheme x:Key="SettingsNavRowStyle" TargetType="Button" BasedOn="{StaticResource TextLinkButtonStyle}">
+    <Setter Property="Height" Value="{DynamicResource Size.SettingsRow}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="{DynamicResource Thickness.None}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+  </ControlTheme>
+
+  <!-- ============ 线性 chevron ============
+       单色、相同 stroke、圆端帽。坐标已内含 Stroke.Icon 的一半（0.75），
+       使描边墨迹恰好填满元素盒；右对齐时 chevron 的右缘与 Toggle / 版本号共享
+       同一条内容右边界。
+
+       WPF 的 StrokeStartLineCap / StrokeEndLineCap / StrokeLineJoin 在 Avalonia 11
+       没有对应属性（Shape 只有 StrokeLineCap / StrokeJoin），三条并两条，取值仍是 Round。 -->
+  <ControlTheme x:Key="IconChevronStyle" TargetType="Path">
+    <Setter Property="Stroke" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="StrokeThickness" Value="{DynamicResource Stroke.Icon}" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </ControlTheme>
+
+  <!-- 危险行的 chevron：与该行文字同色，否则一行两个颜色读不成一个整体。
+       Windows 端是 BasedOn IconChevronStyle；ControlTheme 支持 BasedOn，所以这里是真继承。 -->
+  <ControlTheme x:Key="IconChevronDestructiveStyle" TargetType="Path" BasedOn="{StaticResource IconChevronStyle}">
+    <Setter Property="Stroke" Value="{DynamicResource Brush.ErrorText}" />
+  </ControlTheme>
+
+</ResourceDictionary>

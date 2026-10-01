@@ -1,0 +1,54 @@
+{
+  "project": "AndroidLibXrayLite",
+  "tag": "v26.9.9",
+  "commit": "d0c6c4ae1b09c912070c8288bd0dbcc2e492ac29",
+  "license": "LGPL-3.0",
+  "source_archive": "https://github.com/2dust/AndroidLibXrayLite/archive/d0c6c4ae1b09c912070c8288bd0dbcc2e492ac29.zip",
+  "files": [
+    {
+      "file": "LICENSE",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/LICENSE",
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "file": "README.md",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/README.md",
+      "sha256": "0cfbe43bc0f1df86a8beb63417f854b491ee55e7803bd79a30ba2de13baca331"
+    },
+    {
+      "file": "gen_assets.sh",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/gen_assets.sh",
+      "sha256": "efd9626a88f0ab35fc002ae17aaa727d33241dace8ecac1d8665680330b88458"
+    },
+    {
+      "file": "go.mod",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/go.mod",
+      "sha256": "e0294149eb5aeeb333d7f8c3308ca8179308288b76e7f19fb89b2374092dd575"
+    },
+    {
+      "file": "go.sum",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/go.sum",
+      "sha256": "7ac44fd2016091d8f4dd428f82fcf1179137f2dc2fdee0a4ae019ea96b0d9fde"
+    },
+    {
+      "file": "libv2ray_android.go",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/libv2ray_android.go",
+      "sha256": "fa42f0904d0fe630406c8705ab226491e0d8e90af4f7da4e006200e9b2eaf8ca"
+    },
+    {
+      "file": "libv2ray_certSha256.go",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/libv2ray_certSha256.go",
+      "sha256": "5bcd29dbfecf12bdfa2e38cf14f90a178907a364750a8e397ccc0361a0ba1b86"
+    },
+    {
+      "file": "libv2ray_main.go",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/libv2ray_main.go",
+      "sha256": "a8ab25ec29434e5a354000684b783cf7b65293327954778c81d0b76b1b454652"
+    },
+    {
+      "file": "libv2ray_utils.go",
+      "source": "https://raw.githubusercontent.com/2dust/AndroidLibXrayLite/v26.9.9/libv2ray_utils.go",
+      "sha256": "38c321a8fc898932bdbb2edce24f6486abf5f0acfdfaaf7e4e4d0f0751bbf114"
+    }
+  ]
+}

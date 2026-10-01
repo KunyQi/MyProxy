@@ -1,0 +1,22 @@
+AndroidLibXrayLite 来源与校验记录
+======================================================================
+库名: AndroidLibXrayLite
+版本: v26.9.9（libVersion 40；xray-core v1.260327.1-0.20260908222543-52a412d9e2f5）
+
+下载 URL:
+  AAR: https://github.com/2dust/AndroidLibXrayLite/releases/download/v26.9.9/libv2ray.aar
+  源码 jar: https://github.com/2dust/AndroidLibXrayLite/releases/download/v26.9.9/libv2ray-sources.jar
+
+文件大小与 SHA-256 (sha256sum, 64位小写十六进制；与 GitHub Release 资产标注的 digest 一致):
+  libv2ray.aar
+    Bytes: 61959194
+    SHA-256: 9ecf4c921568d8f4cb8550d3bafe08ff6f1d1984f45a6ad183dcdf52ee9302de
+  libv2ray-sources.jar
+    Bytes: 8755
+    SHA-256: c6d5eda3d69739c7cdfa177f607b5549b6764062ed2ee9a65c600c2fc26e8ccf
+
+对应源码与许可:
+  AndroidLibXrayLite v26.9.9 commit: d0c6c4ae1b09c912070c8288bd0dbcc2e492ac29
+  包装层源码及构建输入: upstream/（SOURCES.json 记录原文下载来源与摘要）
+  原生 AAR 的 Go 模块版本: BUILD-INFO.json（从 libgojni.so 读取）
+  源码下载、许可全文与重建安装方向: SOURCE.md

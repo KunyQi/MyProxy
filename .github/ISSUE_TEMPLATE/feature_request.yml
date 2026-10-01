@@ -1,0 +1,23 @@
+name: 功能建议
+description: 描述实际使用场景与期望结果
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景与当前困难
+      description: 说明谁在什么情况下遇到问题。
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 期望结果
+      description: 描述用户或部署者希望完成的事情，不需要先指定实现方案。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 现有做法与取舍
+      description: 如有方案，说明它对体积、稳定性、部署或维护成本的影响。

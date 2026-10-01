@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="binding_error_not_configured">尚未配置服务器，请联系部署管理员。</string>
+    <string name="app_name">MyProxy</string>
+    <string name="vpn_notification_channel_description">客户端后台连接服务</string>
+
+    <string name="binding_subtitle">首次绑定</string>
+    <string name="binding_hint">填写你收到的 8 位配对码。</string>
+    <string name="binding_code_label">配对码</string>
+    <string name="binding_button">绑定</string>
+    <string name="binding_button_binding">正在绑定</string>
+
+
+    <string name="binding_error_invalid_format">配对码格式不正确，请输入8位字母或数字</string>
+    <string name="binding_error_untrusted">无法验证服务器身份，请联系部署管理员</string>
+    <string name="binding_error_invalid">配对码无效，请检查后重试</string>
+    <string name="binding_error_expired">配对码已过期，请重新获取</string>
+    <string name="binding_error_device">设备校验失败，请重新绑定</string>
+    <string name="binding_error_unreachable">无法连接服务器，请检查网络后重试</string>
+    <string name="binding_error_rate_limited">请求过于频繁，请稍后重试</string>
+    <string name="binding_error_server">服务器暂时不可用，请稍后重试</string>
+    <string name="binding_error_unknown">绑定失败，请稍后重试</string>
+
+    <string name="main_settings">设置</string>
+    <string name="main_status_unbound">未绑定</string>
+    <string name="main_status_disconnected">未连接</string>
+
+    <string name="main_status_connecting">正在连接…</string>
+    <string name="main_status_connected">已连接</string>
+    <string name="main_status_disconnecting">正在停止…</string>
+    <string name="main_status_error">连接失败</string>
+    <string name="main_status_blocked">流量已阻断</string>
+    <string name="main_error_message">无法连接服务器，请检查网络后重试</string>
+    <string name="main_connected_description">网络连接正常</string>
+    <string name="main_error_blocked">连接已中断，全部流量已阻断。停止并解除保护，或重试连接。</string>
+    <string name="main_latency">延迟 %1$d ms</string>
+    <string name="main_check_connection">检查连接</string>
+
+    <string name="main_orb_start">启动连接</string>
+    <string name="main_orb_stop">停止连接</string>
+    <string name="main_orb_stop_and_release">停止并解除保护</string>
+    <string name="main_orb_retry">重试连接</string>
+    <string name="main_orb_cancel">取消连接</string>
+    <string name="main_switching">正在切换…</string>
+    <string name="main_proxy_mode">代理模式</string>
+    <!--
+      「规则」听起来像存在一个用户能增删改的规则集，而分流策略是客户端内置且
+      固定的。名字要说清楚流量怎么走，而不是暗示一个并不存在的规则编辑器。
+      内部枚举仍是 ProxyMode.RULE / GLOBAL，存储值与协议字段一律不变。
+    -->
+    <string name="main_mode_rule">智能分流</string>
+    <string name="main_mode_global">全局代理</string>
+    <!--
+      两条说明都写明私网与 BT 始终阻断：那是两种模式共有的行为，只在一处提
+      会让人以为换个模式就不拦了。
+    -->
+    <string name="settings_mode_rule_description">国内网站直连，其余走代理。私网地址与 BT 流量始终阻断。</string>
+    <string name="settings_mode_global_description">所有网站统一走代理。私网地址与 BT 流量始终阻断。</string>
+    <string name="main_battery_warning">后台限制可能中断连接，轻触前往关闭</string>
+
+    <!--
+      隧道建立之前用的文案。先前这一段也用「已连接」：START_STICKY 拉起服务、
+      always-on 开机启动、以及任何一次启动的头几百毫秒，通知栏都在说一件
+      还没发生的事。
+
+      通知标题已经是 app_name，正文不再重复「MyProxy /」前缀——系统在标题栏
+      还会再显示一次应用名，先前同一个词在一条通知里出现三次。
+    -->
+    <string name="notification_connecting">正在连接…</string>
+    <string name="notification_connected">已连接</string>
+    <string name="notification_blocked">保护中 · 全部流量已阻断</string>
+    <string name="notification_action_stop">停止</string>
+    <string name="notification_action_release">释放</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_back">返回</string>
+    <string name="settings_section_startup">启动</string>
+    <string name="settings_section_protection">保护</string>
+    <string name="settings_section_updates">更新</string>
+    <string name="settings_section_device">设备</string>
+    <string name="settings_section_diagnostics">诊断</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_chevron" translatable="false">›</string>
+    <string name="settings_auto_connect">启动后自动连接</string>
+    <string name="settings_auto_check_update">自动检查更新</string>
+    <string name="settings_kill_switch">断网保护</string>
+    <string name="settings_kill_switch_hint">连接意外中断时阻断流量，重连或停止后解除。</string>
+    <string name="settings_self_heal">自动修复</string>
+    <string name="settings_self_heal_hint">灭屏且连接空闲时，自动重启运行异常的连接。</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_device_info">设备信息</string>
+    <string name="settings_device_info_unavailable">暂无设备绑定信息。</string>
+    <string name="settings_device_info_value">设备：%1$s\n平台：%2$s\n客户端：%3$s</string>
+    <string name="settings_rebind">重新绑定</string>
+    <string name="settings_rebind_confirm_title">确认重新绑定</string>
+    <string name="settings_rebind_confirm_message">将停止连接并清除本机凭据；之后需要重新输入配对码。</string>
+    <string name="settings_rebind_confirm">继续</string>
+    <string name="settings_cancel">取消</string>
+    <string name="settings_core_health">内核健康</string>
+    <string name="settings_core_health_idle">未连接时不采集</string>
+    <string name="settings_core_health_value">内存 %1$s（+%2$s）· CPU %3$d%% · 运行 %4$s</string>
+    <string name="settings_core_health_heals">已静默重启 %1$d 次</string>
+    <string name="settings_core_health_abandoned">静默重启未能回收内存，本次连接已停止尝试</string>
+    <string name="settings_view_logs">查看日志</string>
+    <string name="settings_logs_empty">暂无诊断日志。</string>
+    <string name="settings_logs_clear">清空</string>
+    <string name="settings_close">关闭</string>
+    <string name="settings_update_available">发现新版本 %1$s</string>
+    <string name="settings_benchmark_title">测试内存回收</string>
+    <string name="settings_benchmark_subtitle">立即重启内核并记录回收量</string>
+</resources>

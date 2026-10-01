@@ -1,0 +1,87 @@
+<UserControl x:Class="MyProxy.Views.BindView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="720"
+             UseLayoutRounding="True"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
+             Background="{DynamicResource Brush.Background}">
+    <!-- 窗口高度对所有页面恒为 720：点「设置」时窗口尺寸不该跳。
+         本页内容按自己的紧凑高度排布，整体垂直居中，上下留白对称。
+         紧凑高度回到 420：当初提到 500 是为了「服务器地址」一栏与身份确认面板，
+         服务器改回编译期常量之后两者都没有了。 -->
+    <Grid Style="{StaticResource PageRootStyle}"
+          Height="420"
+          VerticalAlignment="Center">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="MyProxy"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   Style="{StaticResource PageTitleTextStyle}" />
+
+        <!-- 标题与它的说明是同一个 band：宿主 → 解释用 Space.XS，不占一整个 band gap -->
+        <StackPanel Grid.Row="2">
+            <TextBlock Text="首次绑定"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Style="{StaticResource PrimaryTextStyle}" />
+            <TextBlock Margin="{StaticResource Thickness.TopXS}"
+                       Text="填写你收到的 8 位配对码"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Style="{StaticResource SecondaryTextStyle}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="4">
+            <Grid Style="{StaticResource ReservedLineStyle}">
+                <TextBlock Text="配对码"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Style="{StaticResource SecondaryTextStyle}" />
+            </Grid>
+            <TextBox x:Name="PairingCodeBox"
+                     Margin="{StaticResource Thickness.TopSM}"
+                     Style="{StaticResource TextInputErrorStateStyle}"
+                     Text="{Binding PairingCode, UpdateSourceTrigger=PropertyChanged}"
+                     Tag="{Binding HasCodeError}"
+                     IsEnabled="{Binding IsInputEnabled}"
+                     MaxLength="9"
+                     CharacterCasing="Upper"
+                     HorizontalContentAlignment="Center" />
+            <Grid Style="{StaticResource ReservedLineStyle}"
+                  Margin="{StaticResource Thickness.TopXS}">
+                <TextBlock Text="{Binding CodeErrorMessage}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Visibility="{Binding CodeErrorVisibility}"
+                           Style="{StaticResource InlineErrorTextStyle}" />
+            </Grid>
+            <Grid Style="{StaticResource ReservedLineStyle}">
+                <TextBlock Text="{Binding FormErrorMessage}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Visibility="{Binding FormErrorVisibility}"
+                           Style="{StaticResource InlineErrorTextStyle}" />
+            </Grid>
+        </StackPanel>
+
+        <Button Grid.Row="6"
+                Style="{StaticResource PrimaryButtonStyle}"
+                Content="{Binding BindButtonText}"
+                Command="{Binding BindCommand}"
+                IsDefault="True" />
+    </Grid>
+</UserControl>

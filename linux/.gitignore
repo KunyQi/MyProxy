@@ -1,0 +1,8 @@
+# Linux 客户端移植期间的构建/运行产物，不入库。
+# 模式以 / 开头时相对的是**本文件所在的 linux/ 目录**，所以这里写 /MyProxyLinux/…，
+# 不是 /linux/MyProxyLinux/…（后者会去匹配 linux/linux/…，什么也忽略不掉）。
+# 注意只忽略这几层：`linux/MyProxyLinux/assets/` 是**随仓库分发**的资产
+# （VERSION.txt 与 xray 内核），少了它打包门禁过不去，绝不能被忽略掉。
+/MyProxyLinux/**/bin/
+/MyProxyLinux/**/obj/
+/MyProxyLinux/**/TestResults/

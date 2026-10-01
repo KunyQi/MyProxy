@@ -1,0 +1,48 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyProxy.Gui.ViewModels"
+             xmlns:views="using:MyProxy.Gui.Views"
+             x:Class="MyProxy.Gui.App"
+             RequestedThemeVariant="Light">
+
+    <!--
+      对应 Windows 端 App.xaml：资源里挂**默认皮肤入口**，三个 ViewModel 各配一个
+      DataTemplate，于是 MainWindow 里的 ContentControl 只要换 Content 就换页。
+
+      与 Windows 端唯一的差别是取样式用 {DynamicResource} 而不是 {StaticResource}：
+      Avalonia 里换肤时 StaticResource 已经解析完的值不会重取（Windows 端因此不得不在
+      换肤后把整页重建一次）。用 DynamicResource 之后换肤是即时生效的——这是方言差异
+      带来的**改进**，不是行为变化：对用户而言两边看到的都是「换完皮肤界面就变了」。
+    -->
+
+    <Application.Styles>
+        <!--
+          基础控件模板（滚动条、焦点框、文本选择等）来自 Fluent 主题——Windows 端这部分
+          由操作系统主题提供，Linux 上必须有一样东西兜底，否则没被我们重新定义模板的控件
+          会连模板都没有（画不出来）。三页里出现的每一个控件都由 Themes/ 下的样式显式
+          定义外观，所以 Fluent 只在这些边角处起作用，不影响与 Windows 端的一致性。
+        -->
+        <FluentTheme />
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Avalonia 的合并字典用 ResourceInclude，没有 ResourceDictionary.Source。 -->
+                <ResourceInclude Source="avares://myproxy-gui/Themes/DesignTokens.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.DataTemplates>
+        <DataTemplate DataType="vm:BindViewModel">
+            <views:BindView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:MainViewModel">
+            <views:MainView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:SettingsViewModel">
+            <views:SettingsView />
+        </DataTemplate>
+    </Application.DataTemplates>
+</Application>

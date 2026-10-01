@@ -1,0 +1,210 @@
+# MyProxy public Device API allow-list. Render this template with
+# install-device-api-proxy.sh; never proxy the complete control plane.
+limit_req_zone $binary_remote_addr zone=myproxy_device_api_claim:10m rate=10r/m;
+limit_conn_zone $binary_remote_addr zone=myproxy_device_api_conn:10m;
+
+upstream myproxy_device_api_backend {
+    server 127.0.0.1:__UPSTREAM_PORT__;
+    keepalive 16;
+}
+
+server {
+    listen __PUBLIC_PORT__ ssl;
+    listen [::]:__PUBLIC_PORT__ ssl;
+    server_name __SERVER_NAME__;
+
+    ssl_certificate __TLS_CERT__;
+    ssl_certificate_key __TLS_KEY__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_tickets off;
+
+    client_max_body_size 64k;
+    client_header_timeout 10s;
+    client_body_timeout 10s;
+    send_timeout 15s;
+    keepalive_timeout 15s;
+    keepalive_requests 100;
+    limit_conn myproxy_device_api_conn 20;
+    limit_req_status 429;
+    add_header X-Content-Type-Options nosniff always;
+
+    location = /healthz {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    # Exact empty response used by the clients' in-tunnel egress checks.
+    location = /connectivity-check {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /api/device/claim {
+        limit_except POST { deny all; }
+        limit_req zone=myproxy_device_api_claim burst=5 nodelay;
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /api/device/config {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /api/device/heartbeat {
+        limit_except POST { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /api/device/update {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /api/device/update/report {
+        limit_except POST { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /api/device/usage {
+        limit_except POST { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /client/windows/latest.json {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    location = /client/android/latest.json {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    # Linux 客户端的公开更新检查。与上面两条同形：这条路由不需要设备令牌，
+    # 是「更新检查不能完全依赖 Control Plane 在线」的落点，按设备/按用户的指派
+    # 永远不会出现在这里。
+    location = /client/linux/latest.json {
+        limit_except GET { deny all; }
+        proxy_pass https://myproxy_device_api_backend;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 35s;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host $server_name;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_ssl_verify off;
+    }
+
+    # Optional root-managed exact locations for signed manual client downloads.
+    # No matching files means that only the API allow-list above is enabled.
+    include /etc/nginx/myproxy-downloads/*.locations;
+
+    # Catches /api/admin, /api/admin/* and future routes unless deliberately
+    # added to the exact public allow-list above.
+    location / {
+        return 404;
+    }
+}

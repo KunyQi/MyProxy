@@ -1,0 +1,130 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Linux 客户端的共享平面。
+
+    这里**不重写**任何逻辑：Core/、Models/ 与一半的 Services/ 都以源码链接的方式
+    编译 Windows 端那一份文件（<Compile Include="..\..\..\windows\MyProxy\..." />）。
+    于是状态机、xray 配置生成、配对码规范化、Ed25519、manifest 验签、feature flags、
+    用量累加、连接主流程与心跳在两端**是同一份代码**，Windows 端已有的测试覆盖
+    同样覆盖 Linux 端。
+
+    「平台实现」与 Windows 端同形：共享代码调用的 AppInfo / CoreAssets / ISystemProxyService
+    等类型，由本工程提供自己的那一份文件，Windows 端提供它的那一份，两边类型名相同。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>MyProxy.Linux.Core</AssemblyName>
+    <RootNamespace>MyProxy</RootNamespace>
+    <IsPackable>false</IsPackable>
+
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+    <!-- 目标平台是 Linux；分析器据此判断 Unix API 的可用性。 -->
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\deployment.json" LogicalName="MyProxy.Deployment.json" />
+    <InternalsVisibleTo Include="MyProxy.Linux.Tests" />
+  </ItemGroup>
+
+  <!--
+    共享平面之一：Core/（纯逻辑，无 I/O）。
+    唯一排除的是 AutostartTask.cs：它生成的是 Windows 任务计划程序的 XML。
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\..\windows\MyProxy\Core\*.cs"
+             Exclude="..\..\..\windows\MyProxy\Core\AutostartTask.cs"
+             LinkBase="Shared\Core" />
+  </ItemGroup>
+
+  <!-- 共享平面之二：Models/（纯数据形状，全部平台无关）。 -->
+  <ItemGroup>
+    <Compile Include="..\..\..\windows\MyProxy\Models\*.cs" LinkBase="Shared\Models" />
+  </ItemGroup>
+
+  <!--
+    共享平面之三：Services/ 里平台无关的那部分。
+    排除的是每个平台各写一份的实现：系统代理、xray 进程、存储与凭据、
+    崩溃恢复、单实例、开机自启、内核资产定位、界面与皮肤、更新安装。
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\..\windows\MyProxy\Services\ApiEndpoint.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\BindingService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IBindingService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ConfigService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IConfigService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ConnectionController.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IConnectionController.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\HttpClientFactory.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\LogService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ILogService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\NetworkService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\INetworkService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\TlsFailure.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\UpdateService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IUpdateService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\UsageReporter.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\XrayTrafficStatsService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IXrayService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ISystemProxyService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IStorageService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ISecureStorage.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\SecureStorageReadException.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ISingleInstanceService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IStartupService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\IThemeService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ITrayService.cs" LinkBase="Shared\Services" />
+    <Compile Include="..\..\..\windows\MyProxy\Services\ICrashRecoveryService.cs" LinkBase="Shared\Services" />
+  </ItemGroup>
+
+  <!-- Shared update signing public keys. -->
+  <ItemGroup>
+    <Compile Include="..\..\..\windows\MyProxy\App\ReleaseSigningKeys.cs" LinkBase="Shared\App" />
+  </ItemGroup>
+
+  <!--
+    内核（xray）与 geo 数据不复制进 linux/ 目录：与 Windows 端共用同一份文件，
+    geo 数据因此不可能出现「两端不一致」，裁剪脚本也只需产出一份。
+    VERSION.txt 是 Windows 端 xray.exe 的哈希清单，Linux 的清单单独放在
+    linux/MyProxyLinux/assets/VERSION.txt（二进制不同，哈希自然不同）。
+  -->
+  <ItemGroup>
+    <Content Include="..\..\..\windows\MyProxy\Assets\Core\geoip.dat"
+             Link="Core\geoip.dat"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\..\windows\MyProxy\Assets\Core\geosite.dat"
+             Link="Core\geosite.dat"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\assets\VERSION.txt"
+             Link="Core\VERSION.txt"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <!-- 上游许可证只有一份（Windows 那份），不复制第二份以免它漂移。 -->
+    <Content Include="..\..\..\windows\MyProxy\Assets\Core\LICENSE"
+             Link="Core\LICENSE"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <!--
+      Linux 的内核二进制由 scripts/fetch_xray_linux.py 下载（约 25MB，需要外网），
+      所以它可能不在仓库里。这里用条件包含：没有它时构建照样成功，但客户端启动内核
+      时会以 XrayMissing 失败（fail closed），打包脚本的 preflight 也拒绝出包。
+      「构建通过」与「能连」是两件事，这里刻意不让前者假装成后者。
+    -->
+    <Content Include="..\assets\xray"
+             Condition="Exists('..\assets\xray')"
+             Link="Core\xray"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,147 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- 不引 WinForms：自包含发布里它是 21.1 MB（Forms + .Design + .Primitives + Interop），
+         而全项目只有托盘图标用过它，现已改为直接调 Shell_NotifyIcon。 -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>MyProxy</AssemblyName>
+    <Product>MyProxy</Product>
+    <Title>MyProxy</Title>
+    <Description>MyProxy客户端</Description>
+    <!-- Every GUI release must prompt for elevation when double-clicked. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Keep the Windows artifact metadata aligned with AppInfo.Version. -->
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\deployment.json" LogicalName="MyProxy.Deployment.json" />
+    <None Remove="Assets\app.ico" />
+    <Resource Include="Assets\app.ico" />
+    <InternalsVisibleTo Include="MyProxy.Tests" />
+    <Compile Remove="Tests\**\*.cs" />
+    <None Remove="Tests\**\*" />
+    <Page Remove="Tests\**\*.xaml" />
+    <ApplicationDefinition Remove="Tests\**\*.xaml" />
+  </ItemGroup>
+
+  <!--
+    自包含发布会把整个 Microsoft.WindowsDesktop.App 运行时打进来，而它同时含 WPF 与
+    WinForms——关掉 <UseWindowsForms> 只影响编译期引用，运行时那 21.5 MB 照样会落盘。
+    本项目已无任何 WinForms 代码路径（托盘改为直接调 Shell_NotifyIcon），WPF 本身也不
+    依赖它（只有 WindowsFormsIntegration 才会，我们没用），因此从发布清单里剔除。
+    PublishTrimmed 不是选项：WPF 官方不支持裁剪。
+
+    剔除要落在 RuntimePackAsset 而不是 ResolvedFileToPublish：后者只拦住「别复制文件」，
+    deps.json 仍会照旧列出那几个程序集，产出一份清单与磁盘不一致的包——不加载就不报错，
+    属于靠运气。从 RuntimePackAsset 拿掉，文件与 deps.json 会一起干净。
+  -->
+  <!-- Runtime assets and platform metadata. -->
+  <PropertyGroup>
+    <MyProxyUnusedRuntimeFiles>;System.Windows.Controls.Ribbon;UIAutomationClient;UIAutomationClientSideProviders;PresentationFramework.Aero;PresentationFramework.Luna;PresentationFramework.Royale;WindowsFormsIntegration;System.Design;System.Drawing.Design;Microsoft.Win32.Registry.AccessControl;System.Diagnostics.EventLog.Messages;mscordaccore;mscordbi;Microsoft.DiaSymReader.Native.amd64;createdump;clrgc;msquic;</MyProxyUnusedRuntimeFiles>
+  </PropertyGroup>
+
+  <!-- 两处都要拦，实测缺一不可：
+       只清 RuntimePackAsset → deps.json 干净了，文件照旧被复制（省不下体积）；
+       只清 ResolvedFileToPublish → 文件没了，deps.json 仍列着它们（清单与磁盘不一致）。
+       mscordaccore 另有一份带版本号的副本（mscordaccore_amd64_amd64_<版本>），按前缀匹配；
+       被剔除程序集的卫星资源（zh-Hans\*.resources.dll）去掉 .resources 后缀一并匹配。 -->
+  <Target Name="TrimWindowsFormsFromManifest" AfterTargets="ResolveRuntimePackAssets">
+    <ItemGroup>
+      <RuntimePackAsset
+          Remove="@(RuntimePackAsset)"
+          Condition="$([System.String]::Copy('%(RuntimePackAsset.Filename)').StartsWith('System.Windows.Forms'))
+                     or $([System.String]::Copy('%(RuntimePackAsset.Filename)').StartsWith('mscordaccore_'))
+                     or $([System.String]::Copy('$(MyProxyUnusedRuntimeFiles)').Contains(';$([System.String]::Copy('%(RuntimePackAsset.Filename)').Replace('.resources', ''));'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="TrimWindowsFormsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+          Remove="@(ResolvedFileToPublish)"
+          Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Filename)').StartsWith('System.Windows.Forms'))
+                     or $([System.String]::Copy('%(ResolvedFileToPublish.Filename)').StartsWith('mscordaccore_'))
+                     or $([System.String]::Copy('$(MyProxyUnusedRuntimeFiles)').Contains(';$([System.String]::Copy('%(ResolvedFileToPublish.Filename)').Replace('.resources', ''));'))" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup Condition="'$(PublishSingleFile)' != 'true'">
+    <Content Include="Assets\Core\**\*"
+             Exclude="Assets\Core\VERSION.txt"
+             Link="Core\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- A portable single-file build embeds the verified Xray payload. The core
+       must still be extracted before CreateProcess can start xray.exe.
+
+       xray.exe 与 geosite.dat 以 Brotli（最高压缩级别）嵌入：单文件打包自带的是 Deflate，
+       xray.exe 在它手里是 35.0 → 13.2 MB，Brotli 是 → 约 10 MB，每个 EXE 省 3 MB 多。
+       解压在 CoreAssets 里，只在首次释放时发生一次（约 0.1 秒），释放出的字节照旧按
+       VERSION.txt 核对 SHA-256——压缩只是运输形态，信任判据不变。
+       geoip.dat 太小不值得，LICENSE 与 VERSION.txt 保持明文。 -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <MyProxyCoreBrotliDir>$(BaseIntermediateOutputPath)core-br\</MyProxyCoreBrotliDir>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <MyProxyCoreToCompress Include="Assets\Core\xray.exe;Assets\Core\geosite.dat" />
+    <EmbeddedResource Include="Assets\Core\geoip.dat;Assets\Core\LICENSE;Assets\Core\VERSION.txt" />
+    <EmbeddedResource Include="@(MyProxyCoreToCompress->'$(MyProxyCoreBrotliDir)%(Filename)%(Extension).br')"
+                      LogicalName="MyProxy.Assets.Core.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- BrotliStream 不在内联任务编译所用的 netstandard2.0 里，但 .NET SDK 的 MSBuild 跑在
+       .NET 8 上，运行时有它：按名字绑定。用 Visual Studio 自带的 .NET Framework 版
+       msbuild.exe 构建单文件会在这里明确失败——本仓库只用钉死的便携 SDK 构建。 -->
+  <UsingTask TaskName="MyProxyBrotliCompress"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        Type brotli = Type.GetType("System.IO.Compression.BrotliStream, System.IO.Compression.Brotli", throwOnError: true);
+        Directory.CreateDirectory(Path.GetDirectoryName(Destination));
+        string temporary = Destination + ".tmp";
+        using (FileStream input = File.OpenRead(Source))
+        using (FileStream output = File.Create(temporary))
+        // (CompressionLevel)3 = SmallestSize（Brotli 质量 11）；netstandard2.0 的枚举里没有这个名字。
+        using (Stream encoder = (Stream)Activator.CreateInstance(brotli, output, (System.IO.Compression.CompressionLevel)3))
+        {
+            input.CopyTo(encoder);
+        }
+        File.Copy(temporary, Destination, true);
+        File.Delete(temporary);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="MyProxyCompressCoreAssets"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(PublishSingleFile)' == 'true'"
+          Inputs="@(MyProxyCoreToCompress)"
+          Outputs="@(MyProxyCoreToCompress->'$(MyProxyCoreBrotliDir)%(Filename)%(Extension).br')">
+    <MyProxyBrotliCompress Source="%(MyProxyCoreToCompress.FullPath)"
+                           Destination="$(MyProxyCoreBrotliDir)%(MyProxyCoreToCompress.Filename)%(MyProxyCoreToCompress.Extension).br" />
+  </Target>
+
+</Project>

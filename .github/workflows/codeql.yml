@@ -1,0 +1,89 @@
+name: MyProxy CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    if: github.event.repository.visibility == 'public'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            os: windows-latest
+            build-mode: manual
+          - language: java-kotlin
+            os: ubuntu-latest
+            build-mode: manual
+          - language: python
+            os: ubuntu-latest
+            build-mode: none
+          - language: actions
+            os: ubuntu-latest
+            build-mode: none
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Install .NET SDK
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: 8.0.424
+      - name: Install Java
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        if: matrix.language == 'java-kotlin'
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+        with:
+          packages: 'platform-tools'
+      - name: Install Android build tools
+        if: matrix.language == 'java-kotlin'
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+      - name: Build Windows and Linux C# code
+        if: matrix.language == 'csharp'
+        shell: pwsh
+        run: |
+          dotnet build windows/MyProxy/MyProxy.csproj -c Release --nologo
+          dotnet build linux/MyProxyLinux/cli/MyProxy.Linux.Cli.csproj -c Release --nologo
+          dotnet build linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj -c Release --nologo
+      - name: Build Android Kotlin code
+        if: matrix.language == 'java-kotlin'
+        working-directory: android/MyProxyAndroid
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon -Pkotlin.compiler.execution.strategy=in-process assembleDebug
+      - name: Analyze
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          category: /language:${{ matrix.language }}

@@ -1,0 +1,323 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+    ================================================================================
+    输入框（TextInput*）与两种主按钮（Primary/Secondary）—— 从
+    windows/MyProxy/Themes/{DesignTokens,Ceramic,Porcelain}.xaml 三份字典里逐项搬。
+    ================================================================================
+
+    「按下时整体下移 1px」这条材质规则在三套皮肤里的表达方式不同，但**原因相同**：
+      · DesignTokens / Porcelain —— hover 与 pressed 都是叠加层淡入（盒模型恒定）；
+      · Ceramic —— 按下改变的是材质（釉从凸翻凹、顶缘高光挪到底唇、接触影消失），
+        并且整体下沉 2px。
+    共同点是「按下时元素相对基座下沉」。所以这里把下沉统一表达成
+    `RenderTransform = translate(0px, 1px)`（走令牌之外的一个字面量 1px——令牌表里
+    没有这一支，见文件末尾「拿不准」），颜色侧则一律交给令牌：同一份模板在三套皮肤
+    下取到三种不同的「按下色」。
+    ⚠ 用 RenderTransform 而不是 Margin：改 Margin 会触发布局重排（按钮里还有
+    内容要做一次 measure），而按压是最高频的交互；1px 的整数位移在整数 DPI 下
+    不会糊（transform 的偏移如果是半像素才会）。
+    -->
+
+    <!-- ============ 文本输入 ============ -->
+
+    <!--
+      高 36；白底；Radius 6；1px Border。状态优先级：Error > Focus > Hover > 常态，
+      与 Windows 端 `TextInputErrorStateStyle` 的触发器顺序一致（派生样式的触发器
+      排在基样式之后）。
+
+      **错误态靠 Tag 驱动，视图侧只写一个属性**：`Tag="{Binding HasCodeError}"`。
+      用 PropertyEquals 选择器 `[Tag=True]` 匹配——Avalonia 会把选择器里的
+      字符串按目标属性的类型做一次转换，`Tag` 是 object，绑进来的是装箱 bool，
+      于是匹配的是 Boolean true 本身，而不是字符串 "True"。
+
+      `:not(:pointerover):not(:focus)` 是刻意的：红边只占「既不悬停也没聚焦」这一档，
+      鼠标一压上去 BorderStrong 立刻接回、一聚焦 Accent 立刻接回——不是取舍，
+      是 Windows 端 DataTrigger + Trigger 的原样行为（BindViewModel.PairingCode 的
+      setter 每次按键都清 ErrorMessage，用户一开始改红边就消失）。
+    -->
+    <ControlTheme x:Key="TextInputStyle" TargetType="TextBox">
+        <Setter Property="Height" Value="{DynamicResource Size.Control}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Hairline}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Padding" Value="{DynamicResource Thickness.TextInputPadding}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- 必须提供显式模板，不能用 FluentTheme 的默认 TextBox 模板：
+                     那份没有我们的 CornerRadius（输入框会是圆角不一致的直角），
+                     自带一套规范外的颜色，而且禁用态会压 Opacity —— 那会把用户
+                     自己敲进去的配对码糊掉，只剩一个看不清的灰块。 -->
+                <Border x:Name="InputBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{DynamicResource Radius.SM}"
+                        ClipToBounds="True">
+                    <!-- Avalonia 的 TextBox 模板必须有一个名为 PART_TextPresenter 的
+                         TextPresenter（[TemplatePart(..., IsRequired = true)]，
+                         OnApplyTemplate 用 NameScope.Get 取，缺了会抛 KeyNotFoundException）。
+                         WPF 那边宿主是 ScrollViewer#PART_ContentHost，Avalonia 不是——
+                         滚动由 TextPresenter 自己按 TextWrapping 处理。
+                         绑定集合照 Avalonia 官方 Fluent 主题的 TextBox 模板取，
+                         只保留本控件用得上的那些。 -->
+                    <TextPresenter x:Name="PART_TextPresenter"
+                                   Margin="{TemplateBinding Padding}"
+                                   Text="{TemplateBinding Text, Mode=TwoWay}"
+                                   CaretIndex="{TemplateBinding CaretIndex}"
+                                   CaretBrush="{TemplateBinding CaretBrush}"
+                                   SelectionStart="{TemplateBinding SelectionStart}"
+                                   SelectionEnd="{TemplateBinding SelectionEnd}"
+                                   SelectionBrush="{TemplateBinding SelectionBrush}"
+                                   SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                   PasswordChar="{TemplateBinding PasswordChar}"
+                                   RevealPassword="{TemplateBinding RevealPassword}"
+                                   TextAlignment="{TemplateBinding TextAlignment}"
+                                   TextWrapping="{TemplateBinding TextWrapping}"
+                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:pointerover">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+            </Style>
+            <Style Selector="^:focus">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+            </Style>
+            <!-- 错误态。放在最后：同优先级的规则里后声明者胜（Avalonia 的选择器
+                 优先级把 name > 属性/伪类 > 类 > 类型 排下来，「伪类 + 属性」
+                 天然压过单个伪类，所以这里其实两条都占）。 -->
+            <Style Selector="^[Tag=True]:not(:pointerover):not(:focus)">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+            </Style>
+            <Style Selector="^.error:not(:pointerover):not(:focus)">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+            </Style>
+            <!-- 禁用态换笔刷而不是压 Opacity：混色会算出令牌表外的颜色，
+                 而且用户敲进去的配对码必须仍然读得清。 -->
+            <Style Selector="^:disabled">
+                <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!--
+      TextInputErrorStateStyle —— Windows 端是一个 `BasedOn=TextInputStyle` 的派生
+      样式，只为多挂一条 Tag 触发器。在 Avalonia 里，把 Error 态做进基主题之后
+      这个 key 就没有独立内容了；但视图侧可能仍然按 Windows 的写法引用它，
+      所以保留它，并让它指向同一份 ControlTheme（用 `BasedOn` 表达「这是基主题
+      加一条错误规则」这一层意思，而不是复制一遍模板）。
+
+      **视图作者只需二选一**：
+        方式 A（推荐）：`Theme="{StaticResource TextInputStyle}"` + `Tag="{Binding HasCodeError}"`
+        方式 B：        `Theme="{StaticResource TextInputErrorStateStyle}"` + `Tag="{Binding HasCodeError}"`
+        方式 C：        `Theme="{StaticResource TextInputStyle}"` + `Classes="error"`（由 VM 切类名）
+      三种都能切到错误态；A 与 B 在本文件里等价。
+    -->
+    <ControlTheme x:Key="TextInputErrorStateStyle"
+                  TargetType="TextBox"
+                  BasedOn="{StaticResource TextInputStyle}" />
+
+    <!-- ============ 按钮 ============ -->
+
+    <!--
+      主按钮：高 40，实底 AccentText + 白字，Radius 6，1px 同色边。
+      常态即带边，使盒模型在 enabled / disabled 之间恒定（禁用只换颜色，不换厚度，
+      否则按钮会在被禁用的瞬间缩进 1px）。
+
+      hover / pressed 一律用**叠加层**而不是换 `Background`：
+        · 换 Background 会连带重绘内容（文字要重新排版），而这里只需要一层釉；
+        · 共享笔刷不能做 ColorAnimation，叠加层是唯一能只动 Opacity 的写法。
+      按下时 Root 整体下沉 1px（见文件头），松手回来。
+    -->
+    <ControlTheme x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Height" Value="{DynamicResource Size.PrimaryButton}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource Brush.AccentText}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentText}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Hairline}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Padding" Value="{DynamicResource Thickness.ButtonPadding}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid x:Name="PressHost"
+                      Background="Transparent"
+                      RenderTransform="translate(0px, 0px)">
+                    <Border x:Name="ButtonSurface"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Radius.SM}" />
+
+                    <!-- 两层叠加：hover（AccentHover）与 pressed（AccentPressed）。
+                         pressed 在 hover 之上，两者都淡入也不会串色——因为
+                         pressed 那一层是不透明的实色。 -->
+                    <Border x:Name="HoverLayer"
+                            Background="{DynamicResource Brush.AccentHover}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <Border x:Name="PressLayer"
+                            Background="{DynamicResource Brush.AccentPressed}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Opacity="0"
+                            IsHitTestVisible="False" />
+
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Margin="{TemplateBinding Padding}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True" />
+
+                    <!-- 焦点环：WPF 的 FocusVisualStyle，Avalonia 用模板里的一层
+                         1px 描边 + `:focus-visible`（键盘 Tab 才亮）。 -->
+                    <Border x:Name="FocusRing"
+                            BorderBrush="{DynamicResource Alias.FocusRingBrush}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsVisible="False"
+                            IsHitTestVisible="False" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:pointerover /template/ Border#HoverLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#PressLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <!-- 整体下沉 1px：按下瞬时（不加缓动，按压要跟手），松手回弹。
+                 位移走 RenderTransform，不动布局。
+                 ⚠ 「1px」这个数值在令牌表里**没有**对应项，见文件末尾第 1 条。 -->
+            <Style Selector="^:pressed /template/ Grid#PressHost">
+                <Setter Property="RenderTransform" Value="translate(0px, 1px)" />
+            </Style>
+            <Style Selector="^:focus-visible /template/ Border#FocusRing">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <!-- 禁用：换笔刷，不压 Opacity（压 Opacity 会算出令牌表外的颜色）。
+                 两个叠加层一并藏掉，否则命令在悬停时禁用它，hover 层已经淡到 1
+                 就再也不退，禁用的配色会被它盖住。 -->
+            <Style Selector="^:disabled">
+                <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#ButtonSurface">
+                <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#HoverLayer">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#PressLayer">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+    <!--
+      次按钮：白底、1px BorderStrong、TextPrimary。
+      V1 三页尚未使用（Windows 端点名保留为组件库条目），所以它没有按压位移——
+      真正按下的那一下由 Border 换 Background 表达，与 Windows 端一致。
+    -->
+    <ControlTheme x:Key="SecondaryButtonStyle" TargetType="Button">
+        <Setter Property="Height" Value="{DynamicResource Size.PrimaryButton}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource Thickness.Hairline}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Padding" Value="{DynamicResource Thickness.ButtonPadding}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent">
+                    <Border x:Name="ButtonSurface"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Radius.SM}" />
+
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Margin="{TemplateBinding Padding}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True" />
+
+                    <!-- 焦点环：与 DesignTokens.xaml 的 `FocusRingStyle` 逐值对齐
+                         （BorderBrush = Brush.TextPrimary、Thickness.Hairline、
+                         Radius.SM、Margin.Hairline），由 `:focus-visible` 开关。 -->
+                    <Border x:Name="FocusRing"
+                            BorderBrush="{DynamicResource Alias.FocusRingBrush}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsVisible="False"
+                            IsHitTestVisible="False" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:pointerover /template/ Border#ButtonSurface">
+                <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#ButtonSurface">
+                <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+            </Style>
+            <Style Selector="^:focus-visible /template/ Border#FocusRing">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            </Style>
+            <Style Selector="^:disabled /template/ Border#ButtonSurface">
+                <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+
+
+</ResourceDictionary>

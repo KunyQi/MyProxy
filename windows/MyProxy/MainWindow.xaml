@@ -1,0 +1,15 @@
+<Window x:Class="MyProxy.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MyProxy"
+        Icon="pack://application:,,,/MyProxy;component/Assets/app.ico"
+        Width="400"
+        SizeToContent="Height"
+        ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        Background="{DynamicResource Brush.Background}">
+    <ContentControl x:Name="PageHost" Focusable="False" />
+</Window>

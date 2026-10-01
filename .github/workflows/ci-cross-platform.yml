@@ -1,0 +1,262 @@
+name: MyProxy cross-platform CI
+
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-platform-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: Release policy and packaging tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Verify cross-platform release inputs
+        run: python scripts/release_verify.py check
+
+      - name: Test release policy and package delivery
+        run: python -m unittest discover -s scripts -p 'test_*.py' -v
+
+  server:
+    name: Server tests and deployment syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Verify release inputs before server tests
+        run: python scripts/release_verify.py check
+
+      - name: Run server unit and regression tests
+        run: python -m unittest discover -s server/tests -v
+
+      - name: Compile server and release helpers
+        run: python -m compileall -q server scripts
+
+      - name: Check deployment shell syntax
+        run: |
+          for script in server/deploy/*.sh; do
+            test -f "$script"
+            bash -n "$script"
+          done
+
+  android:
+    name: Android lint, unit tests, and release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Java 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Verify cross-platform release inputs
+        run: python scripts/release_verify.py check
+
+      - name: Run Android release checks
+        working-directory: android/MyProxyAndroid
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon lintRelease testDebugUnitTest assembleRelease lintStaging testStagingUnitTest assembleStaging
+
+      - name: Upload Android reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-ci-reports-${{ github.sha }}
+          path: |
+            android/MyProxyAndroid/app/build/reports
+            android/MyProxyAndroid/app/build/test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+  linux:
+    name: Linux client build, tests, and tray GUI
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: 8.0.424
+
+      - name: Install Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Verify cross-platform release inputs
+        run: python scripts/release_verify.py check
+
+      - name: Build the Linux client library and CLI
+        run: |
+          dotnet build linux/MyProxyLinux/core/MyProxy.Linux.Core.csproj -c Release --nologo
+          dotnet build linux/MyProxyLinux/cli/MyProxy.Linux.Cli.csproj -c Release --nologo
+
+      - name: Run Linux client tests
+        run: >-
+          dotnet test linux/MyProxyLinux/tests/MyProxy.Linux.Tests.csproj
+          -c Release --nologo
+
+      - name: Build the tray GUI
+        run: dotnet build linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj -c Release --nologo
+
+  windows:
+    name: Windows tests, core hashes, and CI artifact
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: 8.0.424
+
+      - name: Install Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Restore Windows dependencies
+        shell: pwsh
+        run: dotnet restore windows/MyProxy/Tests/MyProxy.Tests.csproj --nologo
+
+      - name: Run Windows test gate
+        shell: pwsh
+        run: >-
+          dotnet test windows/MyProxy/Tests/MyProxy.Tests.csproj
+          --configuration Debug --no-restore --nologo
+
+      - name: Build production configuration
+        shell: pwsh
+        run: dotnet build windows/MyProxy/MyProxy.csproj -c Release --no-restore --nologo
+
+      - name: Run release preflight and shared policy
+        shell: pwsh
+        run: |
+          python scripts/release_verify.py check
+
+      - name: Publish framework-dependent Windows CI artifact
+        shell: pwsh
+        run: >-
+          dotnet publish windows/MyProxy/MyProxy.csproj
+          -c Release -r win-x64 --self-contained false
+          -p:PublishSingleFile=false -o .review-build/tui-ci/MyProxy-win-x64
+
+      - name: Verify core hashes and mark artifact unsigned
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $publish = (Resolve-Path '.review-build/tui-ci/MyProxy-win-x64').Path
+          python scripts/release_verify.py verify-core --publish-dir $publish
+          if ($LASTEXITCODE -ne 0) { throw 'Core hash verification failed.' }
+          python -c "import sys; from pathlib import Path; sys.path.insert(0, 'scripts'); import package_delivery; package_delivery.copy_release_docs(Path(sys.argv[1]))" $publish
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to include public license and source materials.' }
+          @(
+            'Unsigned GitHub CI verification artifact.'
+            'This artifact has build checksums but no publicly trusted Authenticode signature.'
+            'Do not present it as a formal release.'
+          ) | Set-Content (Join-Path $publish 'SIGNING-NOTICE.txt') -Encoding UTF8
+          $checksumLines = Get-ChildItem $publish -Recurse -File |
+            Where-Object Name -ne 'SHA256SUMS.txt' |
+            Sort-Object FullName |
+            ForEach-Object {
+              $relative = [System.IO.Path]::GetRelativePath($publish, $_.FullName).Replace('\', '/')
+              $digest = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$digest  $relative"
+            }
+          [System.IO.File]::WriteAllLines(
+            (Join-Path $publish 'SHA256SUMS.txt'),
+            $checksumLines,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
+      - name: Create CI archive
+        shell: pwsh
+        run: |
+          $archive = '.review-build/tui-ci/MyProxy-win-x64-ci.zip'
+          Compress-Archive -Path '.review-build/tui-ci/MyProxy-win-x64' -DestinationPath $archive -CompressionLevel Optimal
+          $digest = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          [System.IO.File]::WriteAllText(
+            "$archive.sha256",
+            "$digest  MyProxy-win-x64-ci.zip`n",
+            [System.Text.Encoding]::ASCII
+          )
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: MyProxy-windows-ci-${{ github.sha }}
+          path: |
+            .review-build/tui-ci/MyProxy-win-x64-ci.zip
+            .review-build/tui-ci/MyProxy-win-x64-ci.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  attest-public-build:
+    name: Attest public Windows CI artifact
+    if: github.event_name != 'pull_request' && github.event.repository.visibility == 'public'
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Download CI artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: MyProxy-windows-ci-${{ github.sha }}
+          path: dist
+
+      - name: Attest public build provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: dist/MyProxy-win-x64-ci.zip

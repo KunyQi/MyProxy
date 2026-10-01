@@ -1,0 +1,65 @@
+[Unit]
+Description=MyProxy Server API (Control Plane)
+After=network-online.target
+Wants=network-online.target
+Requires=myproxy-xui-helper.service
+After=myproxy-xui-helper.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/myproxy-api
+ExecStart=/usr/bin/python3 -m myproxy_server
+EnvironmentFile=/etc/myproxy-api/admin.env
+User=myproxy
+Group=myproxy
+# Do not inherit any supplementary groups from the account.  The deploy
+# preflight rejects an existing account with extra memberships as well.
+SupplementaryGroups=
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=MYPROXY_LISTEN_PORT=1820
+Environment=MYPROXY_LISTEN_HOST=127.0.0.1
+Environment=MYPROXY_DEPLOYMENT_CONFIG=/opt/myproxy-api/deployment.json
+Environment=MYPROXY_TRUSTED_PROXY_IPS=127.0.0.1,::1
+Environment=MYPROXY_DB_PATH=/var/lib/myproxy-api/myproxy.db
+Environment=MYPROXY_TLS_CERT=/etc/myproxy/tls/server.crt
+Environment=MYPROXY_TLS_KEY=/etc/myproxy/tls/server.key
+Environment=MYPROXY_XUI_HELPER_SOCKET=/run/myproxy/xui-helper.sock
+# Update Plane 的 release 签名公钥，格式 keyId:64hex[,keyId2:64hex]。
+# 是公钥而非机密，所以放在 unit 里而不是 admin.env —— 后者刻意只允许
+# MYPROXY_ADMIN_TOKEN 与 MYPROXY_DEVICE_TOKEN_SECRET 两个键，多一个就拒绝部署。
+# 留空（默认）意味着本部署无法登记任何 release：fail closed 是有意的，
+# 静默跳过验签会把 Update Plane 变成它本要防的那条任意载荷通道。
+# Environment=MYPROXY_RELEASE_SIGNING_KEYS=rel-2026a:<64hex>
+# Observability Plane：小时桶保留天数与 x-ui 计数器扫描的最小间隔。
+# 本进程没有调度器，裁剪在写入时发生、扫描由心跳与查询顺带触发。
+Environment=MYPROXY_USAGE_RETENTION_DAYS=90
+Environment=MYPROXY_USAGE_INGEST_INTERVAL_SECONDS=300
+# 每台设备保留多少个不同出口 IP（当前地址另存于 device_activity，不受此限）。
+# 这是地址历史唯一的上限，想少留就调小；0 表示只留当前地址、不留历史。
+Environment=MYPROXY_DEVICE_ADDRESS_HISTORY=10
+UMask=0077
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/etc/myproxy-api /etc/myproxy
+ReadWritePaths=/var/lib/myproxy-api
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectClock=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

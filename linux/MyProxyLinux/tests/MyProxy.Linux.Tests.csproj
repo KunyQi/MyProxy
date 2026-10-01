@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Linux 客户端的测试。
+
+    与 Windows 端的测试工程同形（MSTest），但只引用**平台无关**的那部分：
+    core 库的整体（含从 windows/MyProxy 链接进来的共享平面）都可以在 Windows
+    开发机上编译与运行，所以这套测试在本机与 CI 的 Linux lane 上都能跑。
+
+    真机才有的东西（真的起 xray 进程、真的写 gsettings、UNIX 套接字上的
+    SO_PEERCRED）在这套测试里用假实现或跳过：它们要的是**能跑的环境**，
+    不是更强的断言。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>MyProxy.Linux.Tests</AssemblyName>
+    <RootNamespace>MyProxy.Linux.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 每个测试文件都要写一遍这几个 using 没有意义。 -->
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+    <Using Include="MyProxy.Core" />
+    <Using Include="MyProxy.Models" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 被测的客户端只跑在 Linux 上，测试里的平台断言据此选择跑还是跳过。 -->
+    <AssemblyAttribute Include="System.Runtime.Versioning.SupportedOSPlatformAttribute">
+      <_Parameter1>linux</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\MyProxy.Linux.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 编译 GUI 使用的纯后台可用性策略，无需把 Avalonia GUI 项目引入测试依赖。 -->
+    <Compile Include="..\gui\ViewModels\DaemonAvailabilityState.cs" Link="Gui\DaemonAvailabilityState.cs" />
+    <Compile Include="..\..\..\windows\MyProxy\Tests\NetworkServiceTests.cs" Link="Shared\NetworkServiceTests.cs" />
+    <Compile Include="..\..\..\windows\MyProxy\Tests\ConnectivityConfigurationTests.cs" Link="Shared\ConnectivityConfigurationTests.cs" />
+  </ItemGroup>
+
+</Project>

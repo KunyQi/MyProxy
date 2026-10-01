@@ -1,0 +1,1862 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- ============ 颜色 Token（瓷感，Light Mode） ============
+         「瓷」不是去仿瓷器纹理，而是把它的气质抽象成配色规则：
+         乳白 / 暖灰 / 青灰，全部低饱和；层与层之间只允许**轻微明度差**，
+         靠极细边框（Border）+ 弱阴影立形，而不是靠对比度砸出层次。 -->
+    <Color x:Key="Color.Background">#E8EBEA</Color>
+    <!-- 乳白：带一丝暖，不是 #FFFFFF。纯白在这套灰里会显得发冷发硬。 -->
+    <Color x:Key="Color.Surface">#FCFCFA</Color>
+    <Color x:Key="Color.SurfaceSunken">#F1F3F1</Color>
+    <Color x:Key="Color.TextPrimary">#2B3432</Color>
+    <Color x:Key="Color.TextSecondary">#5E6764</Color>
+    <Color x:Key="Color.TextDisabled">#7C8681</Color>
+    <!-- 极细边框是瓷感的骨架；早期那版「只靠阴影不要边框」恰恰丢掉了瓷的致密感。 -->
+    <Color x:Key="Color.Border">#CFD6D2</Color>
+    <Color x:Key="Color.BorderStrong">#C4CBC7</Color>
+
+    <!-- 语义色分两套，这是低饱和配色绕不开的一步：
+         `Color.X` 是**面积色**（球体釉色、Sparkline 填充、外晕），够亮才好看；
+         `Color.XText` 是**文字与实底色**，必须压暗到 4.5:1。
+         早期两者共用一个值时，「已确认走服务器」那行绿字只有 2.54:1——
+         整个自检功能的结论几乎读不出来。 -->
+
+    <!-- 青瓷蓝：唯一的交互色。低饱和，温润，不抢。 -->
+    <Color x:Key="Color.Accent">#5B8A9C</Color>
+    <Color x:Key="Color.AccentHover">#4E7A8B</Color>
+    <Color x:Key="Color.AccentPressed">#436A79</Color>
+    <Color x:Key="Color.AccentGlow">#7099AA</Color>
+    <Color x:Key="Color.AccentDeep">#4E7A8B</Color>
+    <!-- 文字与实底：4.59:1 于乳白，白字压其上 4.72:1 -->
+    <Color x:Key="Color.AccentText">#4B7A8A</Color>
+
+    <!-- 青瓷绿：已连接。同样压住饱和度，让它读起来是釉色而不是信号灯。 -->
+    <Color x:Key="Color.Success">#6D9E86</Color>
+    <Color x:Key="Color.SuccessGlow">#82AE96</Color>
+    <Color x:Key="Color.SuccessDeep">#5E8C77</Color>
+    <!-- 文字：4.64:1 于基座 -->
+    <Color x:Key="Color.SuccessText">#3F7159</Color>
+
+    <!-- 陶红：够清晰，但不刺眼 -->
+    <Color x:Key="Color.Error">#A85A5E</Color>
+    <Color x:Key="Color.ErrorGlow">#C08589</Color>
+    <Color x:Key="Color.ErrorDeep">#94494D</Color>
+    <!-- 文字：4.94:1 于基座 -->
+    <Color x:Key="Color.ErrorText">#9B4C50</Color>
+
+    <Color x:Key="Color.Connecting">#5B8A9C</Color>
+
+    <!-- 阴影取文字的青灰黑。纯黑压在这套暖灰上会发脏。 -->
+    <Color x:Key="Color.Shadow">#2B3432</Color>
+
+    <SolidColorBrush x:Key="Brush.Background" Color="{StaticResource Color.Background}" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+    <SolidColorBrush x:Key="Brush.SurfaceSunken" Color="{StaticResource Color.SurfaceSunken}" />
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="{StaticResource Color.TextDisabled}" />
+    <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}" />
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="{StaticResource Color.AccentHover}" />
+    <SolidColorBrush x:Key="Brush.AccentPressed" Color="{StaticResource Color.AccentPressed}" />
+    <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
+    <SolidColorBrush x:Key="Brush.Error" Color="{StaticResource Color.Error}" />
+    <SolidColorBrush x:Key="Brush.Connecting" Color="{StaticResource Color.Connecting}" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="{StaticResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Brush.SuccessText" Color="{StaticResource Color.SuccessText}" />
+    <SolidColorBrush x:Key="Brush.ErrorText" Color="{StaticResource Color.ErrorText}" />
+
+    <!-- 釉边专用：比面积色淡一档。球缘的收口线用面积色会太硬，读成描边 -->
+    <SolidColorBrush x:Key="Brush.AccentGlow" Color="{StaticResource Color.AccentGlow}" />
+
+    <!-- ============ 光晕 ============
+         球外那圈呼吸的辉光。RadiusX/Y 必须是 0.5：半径是相对包围盒的，
+         0.5 才让 offset 1.0 正好落在 196 的边上（这个坑在球体渐变上踩过一次）。
+
+         offset 0.864 = 球缘（Size.Orb / Size.OrbGlow = 140/162）。那以内被球完全盖住，
+         取多少都无所谓，给 1.0 只是让渐变在可见处以满强度起步；往外是**唯一看得见的 11px**，
+         四个停靠点把它铺成一条平滑衰减，于是每个半径都有自己的 alpha。
+
+         ⚠ 改 Size.OrbGlow 必须连着重算这些 offset。只缩元素不动停靠点的话，
+         球缘会滑到渐变中段——环不只是变细，还会同时变淡（196→162 那一版实测
+         球缘 alpha 只剩约 0.34）。
+
+         这里刻意不再用 BlurEffect：模糊实心圆得到的可见部分大半是平的
+         （alpha 恒为 1），空间上没有梯度，透明度一动整圈就整体跳一级——
+         那正是「看起来掉帧」的来源。 -->
+    <RadialGradientBrush x:Key="Brush.Halo.Accent" GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0.00" Color="#FF5B8A9C" />
+        <GradientStop Offset="0.864" Color="#FF5B8A9C" />
+        <GradientStop Offset="0.902" Color="#9E5B8A9C" />
+        <GradientStop Offset="0.939" Color="#525B8A9C" />
+        <GradientStop Offset="0.972" Color="#1F5B8A9C" />
+        <GradientStop Offset="1.000" Color="#005B8A9C" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Halo.Success" GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0.00" Color="#FF6D9E86" />
+        <GradientStop Offset="0.864" Color="#FF6D9E86" />
+        <GradientStop Offset="0.902" Color="#9E6D9E86" />
+        <GradientStop Offset="0.939" Color="#526D9E86" />
+        <GradientStop Offset="0.972" Color="#1F6D9E86" />
+        <GradientStop Offset="1.000" Color="#006D9E86" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Halo.Error" GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0.00" Color="#FFA85A5E" />
+        <GradientStop Offset="0.864" Color="#FFA85A5E" />
+        <GradientStop Offset="0.902" Color="#9EA85A5E" />
+        <GradientStop Offset="0.939" Color="#52A85A5E" />
+        <GradientStop Offset="0.972" Color="#1FA85A5E" />
+        <GradientStop Offset="1.000" Color="#00A85A5E" />
+    </RadialGradientBrush>
+
+    <SolidColorBrush x:Key="Brush.SuccessGlow" Color="{StaticResource Color.SuccessGlow}" />
+    <SolidColorBrush x:Key="Brush.ErrorGlow" Color="{StaticResource Color.ErrorGlow}" />
+
+    <!-- ============ 球面釉色 ============
+         胎体永远是白瓷，颜色只在**边缘**显现——真瓷器就是这样：釉在器壁下缘和
+         转折处堆积才显色，胎是白的。纯色球是塑料，不是瓷。
+
+         几何要点：`RadiusX/Y` 必须正好是 0.5，且 `GradientOrigin` 与 `Center` 重合。
+         它们是相对 bounding box 的比例，0.5 → 渐变半径正好等于球半径，于是 offset 1.0
+         恰好落在球缘，最后两档色标构成那圈聚釉，并且均匀绕满一周。
+
+         偏心的 GradientOrigin 看着能造光源感，实则把球缘的 offset 拉成 0.70(左上)~0.88(右下)
+         的区间，最深那档根本没落到球面上——球因此只剩淡淡一层色。更早一版用 0.74
+         （渐变半径 103px 而球半径 70px）更糟，五档色标只有前两档可见，球看着是纯色的。
+
+         光感交给 Specular 高光，各司其职：渐变负责釉色堆积，高光负责照明。 -->
+
+    <RadialGradientBrush x:Key="Brush.Orb.Idle"
+                         GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#FDFDFB" Offset="0" />
+        <GradientStop Color="#FBFBF9" Offset="0.50" />
+        <GradientStop Color="#F5F5F4" Offset="0.78" />
+        <GradientStop Color="#E9EAE8" Offset="0.91" />
+        <GradientStop Color="#D2D5D3" Offset="1" />
+    </RadialGradientBrush>
+
+    <RadialGradientBrush x:Key="Brush.Orb.Connected"
+                         GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#FDFDFB" Offset="0" />
+        <GradientStop Color="#FBFCFA" Offset="0.50" />
+        <GradientStop Color="#F2F8F5" Offset="0.78" />
+        <GradientStop Color="#D8E9E0" Offset="0.91" />
+        <GradientStop Color="#8FBEA7" Offset="1" />
+    </RadialGradientBrush>
+
+    <RadialGradientBrush x:Key="Brush.Orb.Accent"
+                         GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#FDFDFB" Offset="0" />
+        <GradientStop Color="#FAFCFC" Offset="0.50" />
+        <GradientStop Color="#F0F6F8" Offset="0.78" />
+        <GradientStop Color="#D3E4EC" Offset="0.91" />
+        <GradientStop Color="#87B4C5" Offset="1" />
+    </RadialGradientBrush>
+
+    <RadialGradientBrush x:Key="Brush.Orb.Error"
+                         GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#FDFDFB" Offset="0" />
+        <GradientStop Color="#FCFAFA" Offset="0.50" />
+        <GradientStop Color="#F9F0F0" Offset="0.78" />
+        <GradientStop Color="#EFDADB" Offset="0.91" />
+        <GradientStop Color="#CB9A9D" Offset="1" />
+    </RadialGradientBrush>
+
+    <!-- 釉面高光：若有若无。必须是径向——线性渐变在椭圆下缘会留一道硬边，
+         在球面上读成「油光横带」，那是塑料不是瓷。胎体已是乳白，高光只需再提一点点。 -->
+    <RadialGradientBrush x:Key="Brush.Orb.Specular"
+                         GradientOrigin="0.5,0.5" Center="0.5,0.5"
+                         RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="#59FFFFFF" Offset="0" />
+        <GradientStop Color="#1FFFFFFF" Offset="0.5" />
+        <GradientStop Color="#00FFFFFF" Offset="1" />
+    </RadialGradientBrush>
+
+    <!-- ============ 字体 Token ============
+         主页面（MainView）只许用两档：SizePrimary(16) 给状态文字，其余一律
+         SizeSecondary(13)。四档字号挤在 400px 宽的窗口里读起来是毛糙的，
+         层次改由颜色（TextPrimary / TextSecondary）承担。
+         SizeTitle / SizeBody / SizeCaption 仍供 BindView / SettingsView 使用。 -->
+    <!-- 必须显式带上中文字体。Segoe UI 不含汉字字形，WPF 会**逐字符**回退，
+         不同汉字可能命中不同的系统 CJK 字体——实测「已连接」里的「已」比
+         「连接」明显更粗、转角更硬，就是「已」(U+5DF2) 回退到了另一个字体。
+         写成回退链后，所有汉字确定性地落在 Microsoft YaHei UI 上。 -->
+    <FontFamily x:Key="Font.Family">Segoe UI, Microsoft YaHei UI</FontFamily>
+    <sys:Double x:Key="Font.SizeTitle">20</sys:Double>
+    <sys:Double x:Key="Font.SizePrimary">16</sys:Double>
+    <sys:Double x:Key="Font.SizeBody">14</sys:Double>
+    <sys:Double x:Key="Font.SizeSecondary">13</sys:Double>
+    <sys:Double x:Key="Font.SizeCaption">12</sys:Double>
+
+    <!-- ============ 间距与圆角 Token ============ -->
+    <sys:Double x:Key="Space.XS">4</sys:Double>
+    <sys:Double x:Key="Space.SM">8</sys:Double>
+    <sys:Double x:Key="Space.MD">12</sys:Double>
+    <sys:Double x:Key="Space.LG">16</sys:Double>
+    <sys:Double x:Key="Space.XL">24</sys:Double>
+    <sys:Double x:Key="Space.XXL">32</sys:Double>
+    <!-- 第三档距离，正好是组间的两倍。它不是「又一个间距」，是一层含义：
+         组内相邻 0（靠内缩细线连着）、组与组 Space.XXL、**断开** Space.Detach。
+         必须明显大于组间，否则读者会把它当成又一个分组间隔。
+         设置页用它把「重新绑定」推出所有分组之外。 -->
+    <sys:Double x:Key="Space.Detach">64</sys:Double>
+    <CornerRadius x:Key="Radius.SM">6</CornerRadius>
+    <CornerRadius x:Key="Radius.MD">8</CornerRadius>
+
+    <!-- ============ 同心圆角（强制） ============
+         嵌套的两个圆角矩形要绕同一个圆心，规则只有一条：
+             内圆角 = 外圆角 − 两者之间的间距
+         （Apple HIG 管这叫 concentricity。它同时把形状分三族——fixed 固定 R、
+         capsule R=高÷2、concentric 由父级减间距推出——并且**不许混族**。）
+
+         本仓库只有 6 / 8 / 12 三档固定圆角，没有任何 height÷2 的胶囊，
+         所以两个开关一律走 fixed 族：
+
+           模式开关  轨道 44 高 R12，拨块 36 高、四周留 4  ->  12 − 4 = 8
+           开关      轨道 20 高 R6， 拨块 14 高、四周留 3  ->   6 − 3 = 3
+
+         踩过的坑：拨块曾经是 Ellipse（正圆，等效 R7）嵌在 R6 的方轨里。
+         6 − 3 = 3 ≠ 7，两条弧对不上，一眼就是「矩形框里嵌了个纯圆」。
+         改轨道半径救不了——那是混族，不是取值不对。 -->
+    <CornerRadius x:Key="Radius.ModeThumb">8</CornerRadius>
+    <CornerRadius x:Key="Radius.SwitchThumb">3</CornerRadius>
+    <!-- 轨道内的强调色叠加层被 1px 边框内缩，按同一条同心规则：6 − 1 = 5。
+         用 6 会让它的圆角比应在的位置外鼓，四角露出底下的 Brush.Surface，
+         开启态就会在四个角上出现一圈骨白毛边。 -->
+    <CornerRadius x:Key="Radius.SwitchTrackInner">5</CornerRadius>
+
+    <!-- ============ 尺寸 Token（高度/宽度值域，与 Space.* 间距值域分开管理） ============ -->
+    <sys:Double x:Key="Size.ContentWidth">352</sys:Double>
+    <sys:Double x:Key="Size.LinePrimary">24</sys:Double>
+    <sys:Double x:Key="Size.LineSecondary">20</sys:Double>
+    <sys:Double x:Key="Size.StatusGlyph">20</sys:Double>
+    <sys:Double x:Key="Size.Spinner">12</sys:Double>
+    <sys:Double x:Key="Size.Control">36</sys:Double>
+    <sys:Double x:Key="Size.PrimaryButton">40</sys:Double>
+    <sys:Double x:Key="Size.TextLink">28</sys:Double>
+    <sys:Double x:Key="Size.SettingsRow">44</sys:Double>
+    <!-- 控制层比一条普通行略高：它不是内容的一部分，高度上也不该与内容行齐平 -->
+    <sys:Double x:Key="Size.NavBar">52</sys:Double>
+    <sys:Double x:Key="Size.SwitchTrackWidth">40</sys:Double>
+    <sys:Double x:Key="Size.SwitchTrackHeight">20</sys:Double>
+    <sys:Double x:Key="Size.SwitchThumb">14</sys:Double>
+    <!-- 拨块行程 = 轨道内宽(40-2×1)=38 - 拨块 14 - 两侧各 2 的留白 = 20 -->
+    <sys:Double x:Key="Size.SwitchThumbTravel">20</sys:Double>
+    <sys:Double x:Key="Size.Hairline">1</sys:Double>
+
+    <!-- ============ 描边 Token ============ -->
+    <sys:Double x:Key="Stroke.Icon">1.5</sys:Double>
+    <sys:Double x:Key="Stroke.Spinner">2</sys:Double>
+    <!-- 能量球的 Power 图标：盒子 40×40，比 12px 的 chevron 大得多，1.5 会显得飘 -->
+    <sys:Double x:Key="Stroke.OrbIcon">1.8</sys:Double>
+
+    <!-- 由间距 Token 派生的 Thickness，供 XAML 属性一次性引用（视图禁止写魔法数值） -->
+    <Thickness x:Key="Thickness.ButtonPadding">12,0</Thickness>
+    <Thickness x:Key="Thickness.TextInputPadding">8,0</Thickness>
+    <Thickness x:Key="Thickness.SwitchContentMargin">8,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.SwitchThumbLeft">2,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.None">0</Thickness>
+    <Thickness x:Key="Thickness.PageVertical">0,24,0,24</Thickness>
+    <Thickness x:Key="Thickness.Hairline">1</Thickness>
+    <Thickness x:Key="Thickness.SegmentLeft">1,1,0,1</Thickness>
+    <Thickness x:Key="Thickness.SegmentRight">0,1,1,1</Thickness>
+    <Thickness x:Key="Thickness.TopXS">0,4,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopSM">0,8,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopMD">0,12,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopLG">0,16,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopXL">0,24,0,0</Thickness>
+    <Thickness x:Key="Thickness.LeftXS">4,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.LeftSM">8,0,0,0</Thickness>
+    <CornerRadius x:Key="Radius.MD.Left">8,0,0,8</CornerRadius>
+    <CornerRadius x:Key="Radius.MD.Right">0,8,8,0</CornerRadius>
+
+    <!-- ============ 图标几何（坐标只在此处出现一次） ============
+         坐标已内含 Stroke.Icon 的一半（0.75），使描边墨迹恰好填满元素盒；
+         右对齐时 chevron 的右缘与 Toggle / 版本号共享同一条内容右边界。 -->
+    <PathGeometry x:Key="Geometry.ChevronRight" Figures="M 0.75,0.75 L 5.75,5.75 L 0.75,10.75" />
+    <PathGeometry x:Key="Geometry.ChevronLeft" Figures="M 5.75,0.75 L 0.75,5.75 L 5.75,10.75" />
+
+    <!-- 上下行箭头，11×11 盒、Stroke.Icon(1.5) 描边、圆头圆角。
+         描边式而非实心三角：实心块在 13px 文字旁边的视重远大于同尺寸的线条，
+         会把两个数字压下去；而界面里其余图标（chevron、power、spinner）全是描边式。
+
+         坐标同样按**墨迹包围盒**居中于盒子，不是按顶点：
+           竖线 x=5.5, y∈[2,9]，加半描边 0.75 → x∈[4.75,6.25] y∈[1.25,9.75]
+           头部三点加半描边 → x∈[1.35,9.65]
+           合并 x 中心 5.5 ✓  y 中心 5.5 ✓
+         由 Tests/IconGeometryTests.cs 断言。 -->
+    <PathGeometry x:Key="Geometry.ArrowUp"
+                  Figures="M 2.1,5.4 L 5.5,2 L 8.9,5.4 M 5.5,2 L 5.5,9" />
+    <PathGeometry x:Key="Geometry.ArrowDown"
+                  Figures="M 2.1,5.6 L 5.5,9 L 8.9,5.6 M 5.5,9 L 5.5,2" />
+
+
+    <PathGeometry x:Key="Geometry.SpinnerArc" Figures="M 6,1 A 5,5 0 0 1 11,6" />
+
+
+
+    <Duration x:Key="Motion.Duration.Fast">0:0:0.100</Duration>
+    <Duration x:Key="Motion.Duration.Base">0:0:0.180</Duration>
+    <Duration x:Key="Motion.Duration.SpinnerCycle">0:0:0.8</Duration>
+    <CubicEase x:Key="Motion.Ease.Out" EasingMode="EaseOut" />
+
+    <!-- ============ 页面骨架容器 ============ -->
+
+    <!-- 三页唯一页面外壳：左右边界由几何保证，View 里不再出现宽度与左右 Margin -->
+    <Style x:Key="PageRootStyle" TargetType="{x:Type Grid}">
+        <Setter Property="Width" Value="{StaticResource Size.ContentWidth}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="{StaticResource Thickness.PageVertical}" />
+    </Style>
+
+    <!-- 定高预留槽：内部 TextBlock 保留原 Visibility 绑定，文字消失而槽高不变 -->
+    <Style x:Key="ReservedLineStyle" TargetType="{x:Type Grid}">
+        <Setter Property="Height" Value="{StaticResource Size.LineSecondary}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <Style x:Key="ReservedStatusLineStyle" TargetType="{x:Type Grid}">
+        <Setter Property="Height" Value="{StaticResource Size.LinePrimary}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- 状态符号 / Spinner 共用的定宽槽：状态文字不随符号宽度横向漂移 -->
+    <Style x:Key="StatusGlyphSlotStyle" TargetType="{x:Type Grid}">
+        <Setter Property="Width" Value="{StaticResource Size.StatusGlyph}" />
+        <Setter Property="Height" Value="{StaticResource Size.LinePrimary}" />
+    </Style>
+
+    <Style x:Key="ModeSegmentRowStyle" TargetType="{x:Type Grid}">
+        <Setter Property="Height" Value="{StaticResource Size.Control}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+
+    <Style x:Key="SettingsGroupRuleStyle" TargetType="{x:Type Border}">
+        <Setter Property="Height" Value="{StaticResource Size.Hairline}" />
+        <Setter Property="Background" Value="{StaticResource Brush.Border}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- 设置页：统一行容器（行本身不带分隔线） -->
+    <Style x:Key="SettingsRowStyle" TargetType="{x:Type Grid}">
+        <Setter Property="Height" Value="{StaticResource Size.SettingsRow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- ============ 文本样式（视图只引用 Key） ============ -->
+    <Style x:Key="PageTitleTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeTitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+    </Style>
+
+    <Style x:Key="PrimaryTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizePrimary}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+    </Style>
+
+    <Style x:Key="BodyTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+    </Style>
+
+    <Style x:Key="SecondaryTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+
+    <!-- 行尾的状态短语（「已绑定」）。用 SuccessText 而非面积色 Success：
+         它是文字，要过 4.5:1。 -->
+    <Style x:Key="SuccessCaptionTextStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource SecondaryTextStyle}">
+        <Setter Property="Foreground" Value="{StaticResource Brush.SuccessText}" />
+    </Style>
+
+    <!-- 会造成不可逆后果的行（「重新绑定」）。与普通行同字号，只换颜色：
+         靠颜色 + 一句后果说明 + Space.Detach 的距离三者一起把它与设置区分开，
+         不靠加粗或加框——那会让它读成一个主按钮。 -->
+    <Style x:Key="DestructiveTextStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource BodyTextStyle}">
+        <Setter Property="Foreground" Value="{StaticResource Brush.ErrorText}" />
+    </Style>
+
+    <Style x:Key="CaptionTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeCaption}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+
+    <Style x:Key="StatusPrimaryTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizePrimary}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding State}" Value="Connected">
+                <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Error">
+                <Setter Property="Foreground" Value="{StaticResource Brush.Error}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Connecting">
+                <Setter Property="Foreground" Value="{StaticResource Brush.Connecting}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Disconnecting">
+                <Setter Property="Foreground" Value="{StaticResource Brush.Connecting}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+
+    <Style x:Key="StatusGlyphTextStyle"
+           TargetType="{x:Type TextBlock}"
+           BasedOn="{StaticResource StatusPrimaryTextStyle}">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding State}" Value="Connecting">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="StatusSubTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+
+    <Style x:Key="SectionLabelTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+
+    <Style x:Key="InlineErrorTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.ErrorText}" />
+        <Setter Property="Visibility" Value="Collapsed" />
+    </Style>
+
+
+    <Style x:Key="FocusRingStyle" TargetType="{x:Type Control}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Control}">
+                    <Border BorderBrush="{StaticResource Brush.TextPrimary}"
+                            BorderThickness="{StaticResource Thickness.Hairline}"
+                            CornerRadius="{StaticResource Radius.SM}"
+                            Margin="{StaticResource Thickness.Hairline}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ 控件样式 ============ -->
+
+    <!-- 主按钮：高 40，Accent 底白字，Radius 6。
+         常态即带 1px 同色边，使盒模型在 enabled / disabled 之间恒定。
+         Hover 由叠加层 Opacity 淡入（100ms），pressed 瞬时；
+         禁止对共享 StaticResource 笔刷做 ColorAnimation（模板密封后笔刷被冻结）。 -->
+    <Style x:Key="PrimaryButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="{StaticResource Size.PrimaryButton}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="BorderThickness" Value="{StaticResource Thickness.Hairline}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.ButtonPadding}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.SM}"
+                                SnapsToDevicePixels="True" />
+                        <Border x:Name="HoverLayer"
+                                Background="{StaticResource Brush.AccentHover}"
+                                CornerRadius="{StaticResource Radius.SM}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="PressLayer"
+                                Background="{StaticResource Brush.AccentPressed}"
+                                CornerRadius="{StaticResource Radius.SM}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="Stop">
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}"
+                                                         FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="PressLayer" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Brush.Border}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                            <!-- Hover opacity may still be animated when a command disables
+                                 the button. Hide both overlays so the disabled palette wins. -->
+                            <Setter TargetName="HoverLayer" Property="Visibility" Value="Hidden" />
+                            <Setter TargetName="PressLayer" Property="Visibility" Value="Hidden" />
+                            <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 次按钮：白底、1px Border、TextPrimary（V1 三页未使用，保留为组件库条目） -->
+    <Style x:Key="SecondaryButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="{StaticResource Size.PrimaryButton}" />
+        <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+        <Setter Property="BorderThickness" Value="{StaticResource Thickness.Hairline}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.ButtonPadding}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource Radius.SM}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Brush.Background}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Brush.Border}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Brush.Border}" />
+                            <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 文字链接按钮：设置入口用。
+         Hover 底色必须比页面底色深一档（Brush.Border），
+         用 Brush.Background 等于没有 hover（页面底色本身就是它）。 -->
+    <Style x:Key="TextLinkButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.TextInputPadding}" />
+        <Setter Property="Height" Value="{StaticResource Size.TextLink}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+                        <Border x:Name="HoverLayer"
+                                Background="{StaticResource Brush.Border}"
+                                CornerRadius="{StaticResource Radius.SM}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="Stop">
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}"
+                                                         FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 设置页页眉返回入口：与分组标签、行标题共享同一条内容左边界 -->
+    <Style x:Key="BackLinkButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource TextLinkButtonStyle}">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.None}" />
+    </Style>
+
+    <!-- 组内收尾的一行文字链接（「发现新版本」）：左对齐，高度等于一行预留槽 -->
+    <Style x:Key="InlineLinkButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource TextLinkButtonStyle}">
+        <Setter Property="Height" Value="{StaticResource Size.LineSecondary}" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.None}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+    </Style>
+
+    <!-- 设置页整行可点的导航行：左标题 / 右 chevron，由 View 提供两列内容 -->
+    <Style x:Key="SettingsNavRowStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource TextLinkButtonStyle}">
+        <Setter Property="Height" Value="{StaticResource Size.SettingsRow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.None}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+    </Style>
+
+
+    <Style x:Key="IconChevronStyle" TargetType="{x:Type Path}">
+        <Setter Property="Stroke" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="StrokeThickness" Value="{StaticResource Stroke.Icon}" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- 危险行的 chevron：与该行文字同色，否则一行两个颜色读不成一个整体 -->
+    <Style x:Key="IconChevronDestructiveStyle"
+           TargetType="{x:Type Path}"
+           BasedOn="{StaticResource IconChevronStyle}">
+        <Setter Property="Stroke" Value="{StaticResource Brush.ErrorText}" />
+    </Style>
+
+    <!-- 文本输入：高 36；白底；Radius 6；1px Neutral Border；
+         Hover → BorderStrong；Focus → Accent；Error → Error。
+         必须提供显式模板，禁止继承 WPF 默认 Aero2 模板：那份模板没有 CornerRadius
+         （输入框会是直角），且自带 #7EB4EA / #569DE5 两个规范外颜色，
+         并用 Opacity=0.56 糊掉禁用态里用户自己输入的配对码。 -->
+    <Style x:Key="TextInputStyle" TargetType="{x:Type TextBox}">
+        <Setter Property="Height" Value="{StaticResource Size.Control}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="{StaticResource Thickness.Hairline}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.TextInputPadding}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TextBox}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource Radius.SM}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Margin="{TemplateBinding Padding}"
+                                      Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{StaticResource Brush.Background}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- 状态优先级：Error > Focus（派生 Style 的触发器排在基 Style 之后）。
+         依据不是审美：BindViewModel.PairingCode 的 setter 每次按键都清空 ErrorMessage，
+         用户一开始修改红边就消失、焦点蓝立刻接管，红边不会卡住焦点表达。
+         Tag 的声明类型是 object，写 Value="True" 只会留下字符串常量、
+         永远匹配不上绑定送进来的装箱 bool，所以必须用显式类型的 sys:Boolean。 -->
+    <Style x:Key="TextInputErrorStateStyle"
+           TargetType="{x:Type TextBox}"
+           BasedOn="{StaticResource TextInputStyle}">
+        <Style.Triggers>
+            <Trigger Property="Tag">
+                <Trigger.Value>
+                    <sys:Boolean>True</sys:Boolean>
+                </Trigger.Value>
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Error}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- 12×12 轻量 Spinner；可见性由 ViewModel 限定为 Connecting。
+         旋转由 IsVisible 门控：Collapsed 之后必须停钟，否则 Connected 空闲期
+         与最小化到托盘之后整个会话都在跑一条动画时钟。
+         Ellipse 与 Path 弧共用半径 5 —— WPF 的 Ellipse 会自动内缩半个描边，
+         再加 Margin 反而会让灰环缩到半径 4、与蓝弧脱开。 -->
+    <Style x:Key="ConnectingSpinnerStyle" TargetType="{x:Type ProgressBar}">
+        <Setter Property="Width" Value="{StaticResource Size.Spinner}" />
+        <Setter Property="Height" Value="{StaticResource Size.Spinner}" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ProgressBar}">
+                    <Grid x:Name="SpinnerRoot" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <RotateTransform Angle="0" />
+                        </Grid.RenderTransform>
+                        <Ellipse Stroke="{StaticResource Brush.BorderStrong}"
+                                 StrokeThickness="{StaticResource Stroke.Spinner}" />
+                        <Path Data="{StaticResource Geometry.SpinnerArc}"
+                              Stroke="{StaticResource Brush.Connecting}"
+                              StrokeThickness="{StaticResource Stroke.Spinner}"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsVisible" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="SpinStory">
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="SpinnerRoot"
+                                                         Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)"
+                                                         From="0"
+                                                         To="360"
+                                                         Duration="{StaticResource Motion.Duration.SpinnerCycle}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="SpinStory" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Background 在这里**只**表示"选中块的颜色"，由 SelectionLayer 承载并按 Opacity 淡入；
+         格子本身恒为 Surface 底。hover 与选中是两个独立叠加层，互不吞掉对方。 -->
+    <Style x:Key="SegmentedControlItemStyle" TargetType="{x:Type RadioButton}">
+        <Setter Property="Background" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="FontWeight" Value="Medium" />
+            </Trigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsChecked" Value="True" />
+                    <Condition Property="IsEnabled" Value="False" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{StaticResource Brush.Border}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                <Setter Property="FontWeight" Value="Medium" />
+            </MultiTrigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsChecked" Value="False" />
+                    <Condition Property="IsEnabled" Value="False" />
+                </MultiTrigger.Conditions>
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="SegmentedItemLeftStyle"
+           TargetType="{x:Type RadioButton}"
+           BasedOn="{StaticResource SegmentedControlItemStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <!-- 四层同几何同圆角：底 Surface / hover / 选中 / 描边框。
+                         描边画在填充之上，填充不会溢出压住边框，圆角天然同心。 -->
+                    <Grid SnapsToDevicePixels="True">
+                        <Border Background="{StaticResource Brush.Surface}"
+                                CornerRadius="{StaticResource Radius.MD.Left}" />
+                        <Border x:Name="HoverLayer"
+                                Background="{StaticResource Brush.Background}"
+                                CornerRadius="{StaticResource Radius.MD.Left}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="SelectionLayer"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource Radius.MD.Left}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{StaticResource Thickness.SegmentLeft}"
+                                CornerRadius="{StaticResource Radius.MD.Left}"
+                                Background="Transparent" />
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="Stop">
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}"
+                                                         FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 三格分段控件的中间格：方角，描边与左格同一份厚度（接缝处只画一条）。
+         设置页的「外观」用它；两格的控件用不到，但组件库要能表达三格。 -->
+    <!-- 外观三档分段控件的宽度：三格各 62，刚好装下两个汉字加左右内距。
+         它右对齐在内容右轴上，与同页的开关、chevron 共用同一条右边界。 -->
+    <sys:Double x:Key="Size.ThemePicker">186</sys:Double>
+    <CornerRadius x:Key="Radius.None">0</CornerRadius>
+    <Thickness x:Key="Thickness.SegmentMiddle">1,1,0,1</Thickness>
+
+    <Style x:Key="SegmentedItemMiddleStyle"
+           TargetType="{x:Type RadioButton}"
+           BasedOn="{StaticResource SegmentedControlItemStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <!-- 四层同几何同圆角：底 Surface / hover / 选中 / 描边框。
+                         描边画在填充之上，填充不会溢出压住边框，圆角天然同心。 -->
+                    <Grid SnapsToDevicePixels="True">
+                        <Border Background="{StaticResource Brush.Surface}"
+                                CornerRadius="{StaticResource Radius.None}" />
+                        <Border x:Name="HoverLayer"
+                                Background="{StaticResource Brush.Background}"
+                                CornerRadius="{StaticResource Radius.None}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="SelectionLayer"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource Radius.None}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{StaticResource Thickness.SegmentMiddle}"
+                                CornerRadius="{StaticResource Radius.None}"
+                                Background="Transparent" />
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="Stop">
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}"
+                                                         FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SegmentedItemRightStyle"
+           TargetType="{x:Type RadioButton}"
+           BasedOn="{StaticResource SegmentedControlItemStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <!-- 四层同几何同圆角：底 Surface / hover / 选中 / 描边框（右格，与左格镜像）。
+                         描边画在填充之上，填充不会溢出压住边框，圆角天然同心。 -->
+                    <Grid SnapsToDevicePixels="True">
+                        <Border Background="{StaticResource Brush.Surface}"
+                                CornerRadius="{StaticResource Radius.MD.Right}" />
+                        <Border x:Name="HoverLayer"
+                                Background="{StaticResource Brush.Background}"
+                                CornerRadius="{StaticResource Radius.MD.Right}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="SelectionLayer"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource Radius.MD.Right}"
+                                Opacity="0"
+                                IsHitTestVisible="False" />
+                        <Border BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{StaticResource Thickness.SegmentRight}"
+                                CornerRadius="{StaticResource Radius.MD.Right}"
+                                Background="Transparent" />
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="Stop">
+                                        <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}"
+                                                         FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Toggle：关闭=边框块，开启=Accent 块。无 Content 时收掉内容边距，
+         否则轨道右缘比同页版本号 / chevron 早 8 DIP 收边，控件列对不齐。 -->
+    <Style x:Key="ToggleSwitchStyle" TargetType="{x:Type CheckBox}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeBody}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <StackPanel Orientation="Horizontal" Background="Transparent"
+                                  SnapsToDevicePixels="True">
+                        <Border x:Name="SwitchRoot"
+                                Width="{StaticResource Size.SwitchTrackWidth}"
+                                Height="{StaticResource Size.SwitchTrackHeight}"
+                                CornerRadius="{StaticResource Radius.SM}"
+                                Background="{StaticResource Brush.Surface}"
+                                BorderBrush="{StaticResource Brush.BorderStrong}"
+                                BorderThickness="{StaticResource Thickness.Hairline}"
+                                VerticalAlignment="Center">
+                            <Grid>
+                                <!-- 开启态用叠加层淡入，而不是直接换 Background：
+                                     共享 StaticResource 笔刷不能做 ColorAnimation。 -->
+                                <Border x:Name="SwitchOnLayer"
+                                        Background="{StaticResource Brush.Accent}"
+                                        CornerRadius="{StaticResource Radius.SwitchTrackInner}"
+                                        Opacity="0"
+                                        IsHitTestVisible="False" />
+                                <!-- 拨块是圆角方块不是正圆：R 由轨道推出（见同心圆角 token）。
+                                     开启态填骨白 Brush.Surface 而不是纯白：这是一块实体面，
+                                     全套界面里所有的面都是 #FCFCFA，纯白会是唯一的例外。
+                                     （文字另算：实底按钮上的白字是釉上的墨，不是面。） -->
+                                <Border x:Name="Thumb"
+                                        SnapsToDevicePixels="True"
+                                        Width="{StaticResource Size.SwitchThumb}"
+                                        Height="{StaticResource Size.SwitchThumb}"
+                                        CornerRadius="{StaticResource Radius.SwitchThumb}"
+                                        Background="{StaticResource Brush.BorderStrong}"
+                                        HorizontalAlignment="Left"
+                                        Margin="{StaticResource Thickness.SwitchThumbLeft}">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform x:Name="ThumbShift" X="0" />
+                                    </Border.RenderTransform>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ContentPresenter x:Name="SwitchContent"
+                                          Margin="{StaticResource Thickness.SwitchContentMargin}"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasContent" Value="False">
+                            <Setter TargetName="SwitchContent" Property="Margin" Value="{StaticResource Thickness.None}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="SwitchRoot" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Thumb" Property="Background" Value="{StaticResource Brush.Surface}" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         To="{StaticResource Size.SwitchThumbTravel}"
+                                                         Duration="{StaticResource Motion.Duration.Base}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="SwitchOnLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Base}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="SwitchOnLayer"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="SwitchRoot" Property="Background" Value="{StaticResource Brush.Background}" />
+                            <Setter TargetName="SwitchRoot" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                            <Setter TargetName="SwitchOnLayer" Property="Background" Value="{StaticResource Brush.Border}" />
+                            <Setter TargetName="Thumb" Property="Background" Value="{StaticResource Brush.BorderStrong}" />
+                            <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+
+    <!-- ============ 尺寸 Token（浮空层） ============ -->
+    <sys:Double x:Key="Size.Orb">140</sys:Double>
+    <sys:Double x:Key="Size.OrbHalo">196</sys:Double>
+    <!-- 光晕比槽小：Size.OrbHalo 同时是 Button 的宽高（点击热区）与 MainView 里
+         能量球那条 band 的高度，装饰变细不该带着热区和版面节奏一起变。
+         可见的环 = (162 − 140) ÷ 2 = 11px。 -->
+    <sys:Double x:Key="Size.OrbGlow">162</sys:Double>
+    <sys:Double x:Key="Size.OrbIcon">40</sys:Double>
+    <!-- 釉边只是釉的收口，不是描上去的线：1px + 淡一档的状态色。
+         加粗或用面积色会立刻读成「描了个边的白球」。 -->
+    <sys:Double x:Key="Size.GlazeRim">1</sys:Double>
+    <sys:Double x:Key="Size.OrbSpecularWidth">96</sys:Double>
+    <sys:Double x:Key="Size.OrbSpecularHeight">56</sys:Double>
+    <sys:Double x:Key="Size.OrbSpecularTop">16</sys:Double>
+
+    <!-- 模式开关：轨道 352 宽，两侧各留 4 的滑块内嵌量 -->
+    <sys:Double x:Key="Size.ModeTrackHeight">44</sys:Double>
+    <sys:Double x:Key="Size.ModeThumbWidth">168</sys:Double>
+    <sys:Double x:Key="Size.ModeThumbHeight">36</sys:Double>
+    <!-- 滑块必须与文字列同心：轨道 352 分两列各 176，文字中心在 88 / 264。
+         宽 168 加左右各 4 的内缩，滑块中心正好落在 4+84=88；行程取整列宽 176，
+         推到右列后中心 = 176+88 = 264，右侧内缩同样是 4。
+         旧值 172/172 让滑块中心停在 90 / 262，与文字差 2px 且两端反向。 -->
+    <sys:Double x:Key="Size.ModeThumbTravel">176</sys:Double>
+
+    <sys:Double x:Key="Size.CheckButton">40</sys:Double>
+    <sys:Double x:Key="Size.TrafficChart">44</sys:Double>
+    <sys:Double x:Key="Size.TrafficLabel">18</sys:Double>
+
+    <CornerRadius x:Key="Radius.LG">10</CornerRadius>
+    <CornerRadius x:Key="Radius.Pill">12</CornerRadius>
+    <Thickness x:Key="Thickness.ModeThumbInset">4,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopXXL">0,32,0,0</Thickness>
+    <Thickness x:Key="Thickness.CheckPadding">20,0</Thickness>
+
+    <!-- ============ 多重微阴影 ============
+         WPF 一个元素只能挂一个 Effect，所以「多重」靠嵌套两层元素实现：
+         外层投大而散的环境影（物体离基座多远），内层投紧贴的接触影（物体压住了什么）。
+         只有两层同时在，控件才读起来是浮着的而不是贴了张纸。 -->
+    <DropShadowEffect x:Key="Shadow.Ambient" Color="{StaticResource Color.Shadow}"
+                      BlurRadius="18" ShadowDepth="5" Direction="270"
+                      Opacity="0.055" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="Shadow.Contact" Color="{StaticResource Color.Shadow}"
+                      BlurRadius="4" ShadowDepth="1" Direction="270"
+                      Opacity="0.045" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="Shadow.OrbAmbient" Color="{StaticResource Color.Shadow}"
+                      BlurRadius="22" ShadowDepth="5" Direction="270"
+                      Opacity="0.065" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="Shadow.OrbContact" Color="{StaticResource Color.Shadow}"
+                      BlurRadius="6" ShadowDepth="1" Direction="270"
+                      Opacity="0.045" RenderingBias="Quality" />
+
+    <!-- ============ 动效 Token（浮空层） ============ -->
+    <!-- 呼吸：非线性，靠 SineEase 在两端放慢，中段加速，才像呼吸而非机械往复。
+         ⚠ 呼吸的**主体是光晕明灭，不是球体胀缩**。实测过：2.4s 周期下，
+         球体缩放 2.2% 在屏幕上只产生 4 级可分辨状态（每 0.6s 跳一级，看起来就是掉帧），
+         幅度加到 10%（14px）也才 9 级——「又慢又小」的几何位移必然被像素量化。
+         透明度是 8 位连续量，同样时长里能给出 20+ 级，所以让它挑大梁；
+         缩放降为辅助，提供一点形变感即可。 -->
+    <Duration x:Key="Motion.Duration.Breath">0:0:2.4</Duration>
+    <!-- 连接中的脉冲比呼吸急促，读作「在使劲」 -->
+    <Duration x:Key="Motion.Duration.Pulse">0:0:1.0</Duration>
+    <Duration x:Key="Motion.Duration.Press">0:0:0.09</Duration>
+    <Duration x:Key="Motion.Duration.Spring">0:0:0.6</Duration>
+    <Duration x:Key="Motion.Duration.Slide">0:0:0.34</Duration>
+
+    <SineEase x:Key="Motion.Ease.Breath" EasingMode="EaseInOut" />
+
+    <!-- 呼吸与脉冲的透明度区间。做成 token 有两个理由：
+         一是 Tests/OrbFrameProbe.cs 要按同一份数字回放动画曲线来数可分辨级数，
+         写两份迟早各改各的；二是这几个值是调过的，改动幅度要连着级数一起复核。 -->
+    <sys:Double x:Key="Motion.Orb.BreathAlphaFrom">0.04</sys:Double>
+    <sys:Double x:Key="Motion.Orb.BreathAlphaTo">0.58</sys:Double>
+    <sys:Double x:Key="Motion.Orb.PulseAlphaFrom">0.05</sys:Double>
+    <sys:Double x:Key="Motion.Orb.PulseAlphaTo">0.72</sys:Double>
+    <!-- 缩放是辅助。它是几何位移，会被像素量化成个位数的级数，加大也救不了，
+         加大到能流畅的程度就不温润了。真正扛连续感的是上面的透明度。 -->
+    <sys:Double x:Key="Motion.Orb.BreathScale">1.05</sys:Double>
+    <sys:Double x:Key="Motion.Orb.PulseScale">1.07</sys:Double>
+    <!-- 松手回弹：两次振荡就收住，再多会读成故障 -->
+    <ElasticEase x:Key="Motion.Ease.Spring" EasingMode="EaseOut" Oscillations="2" Springiness="6" />
+    <CubicEase x:Key="Motion.Ease.Slide" EasingMode="EaseOut" />
+    <BackEase x:Key="Motion.Ease.Overshoot" EasingMode="EaseOut" Amplitude="0.35" />
+
+    <!-- ============ Power 图标几何 ============
+         40×40 盒内绘制：圆心 (20, 20.75)、半径 12、顶部开口 104° 的圆弧，
+         加一条 x=20 的垂直轴线。用 Path 描边而非字体字形，任何 DPI 下都解析式锐利。
+
+         两处都不能靠推理，必须实测（Tests/PowerIconProbe.cs 会算包围盒并断言）：
+
+         1. **sweep 必须是 0**。large-arc 与 sweep 共同决定圆心落在弦的哪一侧，
+            实测 large=1/sweep=1 会把圆心推到盒子上方（墨迹 T=-6.92），弧只剩两截
+            「括号」露在盒内——而那在 140px 的球上不放大仍像个 power 图标。
+            large=1/sweep=0 才是圆心在下方、弧伸到 B=33.64 的那条。
+         2. 坐标要让**墨迹包围盒**（含 0.9 的半描边）居中，而不是让圆心居中：
+            弧只占下方大半圈、竖线只占上半，两者的几何中心都不等于视觉中心。
+            当前值实测 ink = L7.14 T6.35 R32.86 B33.64，中心 (20.00, 20.00)。 -->
+    <PathGeometry x:Key="Geometry.PowerArc"
+                  Figures="M 10.54,13.36 A 12,12 0 1 0 29.46,13.36" />
+    <PathGeometry x:Key="Geometry.PowerStem"
+                  Figures="M 20,7.25 L 20,18.75" />
+
+    <!-- ============ 能量球 ============ -->
+    <Style x:Key="OrbButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="{StaticResource Size.OrbHalo}" />
+        <Setter Property="Height" Value="{StaticResource Size.OrbHalo}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <!-- 两层 ScaleTransform：呼吸与按压各占一层，否则两个动画抢同一个属性，
+                         松手回弹会把呼吸的当前相位一并清零，看起来像卡了一下。 -->
+                    <Grid x:Name="PressHost" Background="Transparent" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1" />
+                        </Grid.RenderTransform>
+
+                        <!-- ⚠ 下面两层投影带 DropShadowEffect，必须留在 BreathHost **外面**。
+                             呼吸是 RepeatBehavior=Forever 的，被它缩放的子树每帧都要把
+                             Effect 整个重算一遍。搬出来之后，每帧缩放的子树里一个都没有。
+                             视觉代价为零：投影差那几个百分点看不出来。按压缩放仍然会
+                             带上它们——那是偶发的，且物体被按下去时影子跟着变才对。
+
+                             光晕已改用径向渐变、不再有 Effect，但同样留在外面：
+                             它本就不该跟着球胀缩，只明灭。 -->
+
+                        <!-- 外晕：贴着球缘的一圈细环，呼吸时明灭。未连接时全透明。 -->
+                        <Ellipse x:Name="Halo"
+                                 Width="{StaticResource Size.OrbGlow}"
+                                 Height="{StaticResource Size.OrbGlow}"
+                                 Fill="{StaticResource Brush.Halo.Accent}"
+                                 Opacity="0"
+                                 IsHitTestVisible="False" />
+
+                        <!-- 承影层：实色圆只为投影存在，被上面的球体完全盖住。
+                             呼吸只放大不缩小（1 → Motion.Orb.BreathScale，现为 1.05），
+                             所以球永远盖得住这两个 140 的圆，不会在边缘露出白边。 -->
+                        <Ellipse x:Name="AmbientShadow"
+                                 Width="{StaticResource Size.Orb}"
+                                 Height="{StaticResource Size.Orb}"
+                                 Fill="{StaticResource Brush.Surface}"
+                                 Effect="{StaticResource Shadow.OrbAmbient}"
+                                 IsHitTestVisible="False" />
+                        <Ellipse x:Name="ContactShadow"
+                                 Width="{StaticResource Size.Orb}"
+                                 Height="{StaticResource Size.Orb}"
+                                 Fill="{StaticResource Brush.Surface}"
+                                 Effect="{StaticResource Shadow.OrbContact}"
+                                 IsHitTestVisible="False" />
+
+                        <Grid x:Name="BreathHost" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="BreathScale" ScaleX="1" ScaleY="1" />
+                            </Grid.RenderTransform>
+
+                            <Ellipse x:Name="Orb"
+                                     Width="{StaticResource Size.Orb}"
+                                     Height="{StaticResource Size.Orb}"
+                                     Fill="{StaticResource Brush.Orb.Idle}"
+                                     Stroke="{StaticResource Brush.BorderStrong}"
+                                     StrokeThickness="{StaticResource Size.GlazeRim}" />
+
+                            <!-- 镜面高光：贴在球体上半，让球读作被单一光源照亮 -->
+                            <Ellipse x:Name="Specular"
+                                     Width="{StaticResource Size.OrbSpecularWidth}"
+                                     Height="{StaticResource Size.OrbSpecularHeight}"
+                                     Fill="{StaticResource Brush.Orb.Specular}"
+                                     VerticalAlignment="Top"
+                                     Margin="0,40,0,0"
+                                     IsHitTestVisible="False" />
+
+                            <Canvas x:Name="IconCanvas"
+                                    Width="{StaticResource Size.OrbIcon}"
+                                    Height="{StaticResource Size.OrbIcon}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsHitTestVisible="False">
+                                <Path x:Name="PowerArc"
+                                      Data="{StaticResource Geometry.PowerArc}"
+                                      Stroke="{StaticResource Brush.TextSecondary}"
+                                      StrokeThickness="{StaticResource Stroke.OrbIcon}"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                                <Path x:Name="PowerStem"
+                                      Data="{StaticResource Geometry.PowerStem}"
+                                      Stroke="{StaticResource Brush.TextSecondary}"
+                                      StrokeThickness="{StaticResource Stroke.OrbIcon}"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Grid>
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <!-- 已连接：翠绿球 + 平缓呼吸 -->
+                        <DataTrigger Binding="{Binding State}" Value="Connected">
+                            <Setter TargetName="Orb" Property="Fill" Value="{StaticResource Brush.Orb.Connected}" />
+                            <Setter TargetName="Orb" Property="Stroke" Value="{StaticResource Brush.SuccessGlow}" />
+                            <Setter TargetName="Halo" Property="Fill" Value="{StaticResource Brush.Halo.Success}" />
+                            <Setter TargetName="PowerArc" Property="Stroke" Value="{StaticResource Brush.SuccessText}" />
+                            <Setter TargetName="PowerStem" Property="Stroke" Value="{StaticResource Brush.SuccessText}" />
+</DataTrigger>
+
+                        <!-- 连接中：蔚蓝球 + 急促脉冲 -->
+                        <DataTrigger Binding="{Binding State}" Value="Connecting">
+                            <Setter TargetName="Orb" Property="Fill" Value="{StaticResource Brush.Orb.Accent}" />
+                            <Setter TargetName="Orb" Property="Stroke" Value="{StaticResource Brush.AccentGlow}" />
+                            <Setter TargetName="Halo" Property="Fill" Value="{StaticResource Brush.Halo.Accent}" />
+                            <Setter TargetName="PowerArc" Property="Stroke" Value="{StaticResource Brush.AccentText}" />
+                            <Setter TargetName="PowerStem" Property="Stroke" Value="{StaticResource Brush.AccentText}" />
+</DataTrigger>
+
+                        <DataTrigger Binding="{Binding State}" Value="Disconnecting">
+                            <Setter TargetName="Orb" Property="Fill" Value="{StaticResource Brush.Orb.Accent}" />
+                            <Setter TargetName="Orb" Property="Stroke" Value="{StaticResource Brush.AccentGlow}" />
+                            <Setter TargetName="PowerArc" Property="Stroke" Value="{StaticResource Brush.AccentText}" />
+                            <Setter TargetName="PowerStem" Property="Stroke" Value="{StaticResource Brush.AccentText}" />
+                            <Setter TargetName="Orb" Property="Opacity" Value="0.6" />
+                        </DataTrigger>
+
+                        <DataTrigger Binding="{Binding State}" Value="Error">
+                            <Setter TargetName="Orb" Property="Fill" Value="{StaticResource Brush.Orb.Error}" />
+                            <Setter TargetName="Orb" Property="Stroke" Value="{StaticResource Brush.ErrorGlow}" />
+                            <Setter TargetName="Halo" Property="Fill" Value="{StaticResource Brush.Halo.Error}" />
+                            <Setter TargetName="Halo" Property="Opacity" Value="0.10" />
+                            <Setter TargetName="PowerArc" Property="Stroke" Value="{StaticResource Brush.ErrorText}" />
+                            <Setter TargetName="PowerStem" Property="Stroke" Value="{StaticResource Brush.ErrorText}" />
+                        </DataTrigger>
+
+                        <!-- 放在状态触发器之后：同为 Setter 时后声明者胜，
+                             这条要能盖掉 Connected 的绿色。 -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding State}" Value="Connected" />
+                                <Condition Binding="{Binding CheckSeverity}" Value="Bad" />
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="Orb" Property="Fill" Value="{StaticResource Brush.Orb.Error}" />
+                            <Setter TargetName="Orb" Property="Stroke" Value="{StaticResource Brush.ErrorGlow}" />
+                            <Setter TargetName="Halo" Property="Fill" Value="{StaticResource Brush.Halo.Error}" />
+                            <Setter TargetName="PowerArc" Property="Stroke" Value="{StaticResource Brush.ErrorText}" />
+                            <Setter TargetName="PowerStem" Property="Stroke" Value="{StaticResource Brush.ErrorText}" />
+                        </MultiDataTrigger>
+
+                        <!-- 仅可见主页且系统允许动画时呼吸；阴影留在缩放子树之外。 -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding State}" Value="Connected" />
+                                <Condition Binding="{Binding CanAnimate}" Value="True" />
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.EnterActions>
+                                <BeginStoryboard x:Name="BreathBegin">
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetName="BreathScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="{StaticResource Motion.Orb.BreathScale}"
+                                                         Duration="{StaticResource Motion.Duration.Breath}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Breath}" />
+                                        <DoubleAnimation Storyboard.TargetName="BreathScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="{StaticResource Motion.Orb.BreathScale}"
+                                                         Duration="{StaticResource Motion.Duration.Breath}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Breath}" />
+                                        <DoubleAnimation Storyboard.TargetName="Halo"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="{StaticResource Motion.Orb.BreathAlphaFrom}"
+                                                         To="{StaticResource Motion.Orb.BreathAlphaTo}"
+                                                         Duration="{StaticResource Motion.Duration.Breath}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Breath}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiDataTrigger.EnterActions>
+                            <MultiDataTrigger.ExitActions>
+                                <RemoveStoryboard BeginStoryboardName="BreathBegin" />
+                            </MultiDataTrigger.ExitActions>
+                        </MultiDataTrigger>
+
+                        <!-- 连接状态仍由文字和釉色表达；关闭动画后无需持续绘制。 -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding State}" Value="Connecting" />
+                                <Condition Binding="{Binding CanAnimate}" Value="True" />
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.EnterActions>
+                                <BeginStoryboard x:Name="PulseBegin">
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetName="BreathScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="{StaticResource Motion.Orb.PulseScale}"
+                                                         Duration="{StaticResource Motion.Duration.Pulse}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Breath}" />
+                                        <DoubleAnimation Storyboard.TargetName="BreathScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="{StaticResource Motion.Orb.PulseScale}"
+                                                         Duration="{StaticResource Motion.Duration.Pulse}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Breath}" />
+                                        <DoubleAnimation Storyboard.TargetName="Halo"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="{StaticResource Motion.Orb.PulseAlphaFrom}"
+                                                         To="{StaticResource Motion.Orb.PulseAlphaTo}"
+                                                         Duration="{StaticResource Motion.Duration.Pulse}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Breath}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiDataTrigger.EnterActions>
+                            <MultiDataTrigger.ExitActions>
+                                <RemoveStoryboard BeginStoryboardName="PulseBegin" />
+                            </MultiDataTrigger.ExitActions>
+                        </MultiDataTrigger>
+
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Specular" Property="Opacity" Value="1" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="1.02"
+                                                         Duration="{StaticResource Motion.Duration.Base}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="1.02"
+                                                         Duration="{StaticResource Motion.Duration.Base}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Base}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Base}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <!-- 按下瞬间线性缩到 0.93，松手用 ElasticEase 回弹：
+                             按下要「跟手」所以不加缓动，回弹才是弹簧该出现的地方。 -->
+                        <Trigger Property="IsPressed" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="0.93"
+                                                         Duration="{StaticResource Motion.Duration.Press}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="0.93"
+                                                         Duration="{StaticResource Motion.Duration.Press}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Spring}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Spring}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="1"
+                                                         Duration="{StaticResource Motion.Duration.Spring}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Spring}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Orb" Property="Opacity" Value="0.5" />
+                            <Setter TargetName="AmbientShadow" Property="Effect" Value="{x:Null}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ 模式滑动开关 ============ -->
+    <Style x:Key="ModeSwitchItemStyle" TargetType="{x:Type RadioButton}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <Border Background="Transparent">
+                        <TextBlock x:Name="Label"
+                                   Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Label" Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Label" Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ModeSwitchStyle" TargetType="{x:Type ContentControl}">
+        <Setter Property="Width" Value="{StaticResource Size.ContentWidth}" />
+        <Setter Property="Height" Value="{StaticResource Size.ModeTrackHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ContentControl}">
+                    <Grid>
+                        <!-- 凹陷轨道：比基座亮一档的釉白，读作被压下去的一层 -->
+                        <Border CornerRadius="{StaticResource Radius.Pill}"
+                                Background="{StaticResource Brush.SurfaceSunken}"
+                                BorderBrush="{StaticResource Brush.Border}"
+                                BorderThickness="{StaticResource Thickness.Hairline}" />
+
+                        <!-- 滑块：纯白 + 接触影，浮在轨道上 -->
+                        <Border x:Name="Thumb"
+                                Width="{StaticResource Size.ModeThumbWidth}"
+                                Height="{StaticResource Size.ModeThumbHeight}"
+                                HorizontalAlignment="Left"
+                                Margin="{StaticResource Thickness.ModeThumbInset}"
+                                CornerRadius="{StaticResource Radius.ModeThumb}"
+                                Background="{StaticResource Brush.Surface}"
+                                BorderBrush="{StaticResource Brush.Border}"
+                                BorderThickness="{StaticResource Thickness.Hairline}"
+                                Effect="{StaticResource Shadow.Contact}"
+                                IsHitTestVisible="False">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="ThumbShift" X="0" />
+                            </Border.RenderTransform>
+                        </Border>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <RadioButton Grid.Column="0"
+                                         GroupName="ProxyMode"
+                                         Content="智能分流"
+                                         Style="{StaticResource ModeSwitchItemStyle}"
+                                         IsChecked="{Binding IsRuleMode, Mode=TwoWay}"
+                                         IsEnabled="{Binding IsModeSelectionEnabled}" />
+                            <RadioButton Grid.Column="1"
+                                         GroupName="ProxyMode"
+                                         Content="全局代理"
+                                         Style="{StaticResource ModeSwitchItemStyle}"
+                                         IsChecked="{Binding IsGlobalMode, Mode=TwoWay}"
+                                         IsEnabled="{Binding IsModeSelectionEnabled}" />
+                        </Grid>
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsGlobalMode}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         To="{StaticResource Size.ModeThumbTravel}"
+                                                         Duration="{StaticResource Motion.Duration.Slide}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Slide}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         To="0"
+                                                         Duration="{StaticResource Motion.Duration.Slide}"
+                                                         EasingFunction="{StaticResource Motion.Ease.Slide}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsModeSelectionEnabled}" Value="False">
+                            <Setter TargetName="Thumb" Property="Opacity" Value="0.5" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ 检测按钮（浮空白胶囊） ============ -->
+    <Style x:Key="CheckButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="{StaticResource Size.CheckButton}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Padding" Value="{StaticResource Thickness.CheckPadding}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <!-- 双层 Border = 双层阴影：外层散影拉开与基座的距离，内层接触影收住边缘 -->
+                    <Border x:Name="AmbientLayer"
+                            CornerRadius="{StaticResource Radius.Pill}"
+                            Background="{StaticResource Brush.Surface}"
+                            Effect="{StaticResource Shadow.Ambient}">
+                        <Border x:Name="ContactLayer"
+                                CornerRadius="{StaticResource Radius.Pill}"
+                                Background="{StaticResource Brush.Surface}"
+                                BorderBrush="{StaticResource Brush.Border}"
+                                BorderThickness="{StaticResource Thickness.Hairline}"
+                                Effect="{StaticResource Shadow.Contact}">
+                            <ContentPresenter x:Name="Label"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ContactLayer" Property="Background" Value="{StaticResource Brush.SurfaceSunken}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="AmbientLayer" Property="Effect" Value="{StaticResource Shadow.Contact}" />
+                            <Setter TargetName="ContactLayer" Property="Background" Value="{StaticResource Brush.SurfaceSunken}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                            <Setter TargetName="AmbientLayer" Property="Effect" Value="{x:Null}" />
+                            <Setter TargetName="ContactLayer" Property="Effect" Value="{x:Null}" />
+                            <Setter TargetName="ContactLayer" Property="Background" Value="{StaticResource Brush.SurfaceSunken}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ 自检结果行 ============ -->
+    <Style x:Key="CheckResultTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding CheckSeverity}" Value="Good">
+                <Setter Property="Foreground" Value="{StaticResource Brush.SuccessText}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CheckSeverity}" Value="Bad">
+                <Setter Property="Foreground" Value="{StaticResource Brush.ErrorText}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ============ 速率箭头 ============
+         与 chevron 共用 Stroke.Icon，让两处图标的视重一致。 -->
+    <sys:Double x:Key="Size.TrafficArrow">11</sys:Double>
+
+    <Style x:Key="TrafficArrowStyle" TargetType="{x:Type Path}">
+        <Setter Property="Width" Value="{StaticResource Size.TrafficArrow}" />
+        <Setter Property="Height" Value="{StaticResource Size.TrafficArrow}" />
+        <Setter Property="Stroke" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="StrokeThickness" Value="{StaticResource Stroke.Icon}" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ============ 速率标签 ============
+         等宽数字（Segoe UI 的 lnum/tnum）让数值跳动时字符不横向抖动。 -->
+    <Style x:Key="TrafficLabelTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <!-- ============ 主页标题（浮空层弱化版） ============
+         能量球是页面唯一的视觉中心，标题退成一行标签。BindView / SettingsView
+         仍用 PageTitleTextStyle，不受影响。 -->
+    <Style x:Key="OrbPageTitleStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizeSecondary}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+
+    <!-- ============ 状态文字（浮空层放大版） ============ -->
+    <Style x:Key="OrbStatusTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Family}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.SizePrimary}" />
+        <!-- 适度字重：瓷是含蓄的，SemiBold 在这套低对比配色里会显得吵 -->
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+</ResourceDictionary>

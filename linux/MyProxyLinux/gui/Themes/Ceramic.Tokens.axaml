@@ -1,0 +1,308 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ea="using:Avalonia.Animation.Easings">
+    <!--
+    ================================================================================
+    由 windows/MyProxy/Themes/Ceramic.xaml 机械生成，**不要手工编辑**。
+    ================================================================================
+    重新生成：见本仓库 linux/MyProxyLinux/tools/port_theme_tokens.py 头部注释
+    （加写盘开关即可，具体开关见脚本的帮助文本）。
+
+    这里只包含**值型令牌**：颜色、笔刷、渐变、尺寸、边距、圆角、字体、动效时长与缓动、
+    图标几何、阴影。取值与 Windows 端逐值相同（生成器只做方言映射，不做单位或数值换算，
+    唯一的算式是 WPF 的「角度 + 距离」阴影换成 Avalonia 的「偏移」）。
+
+    不在这里的东西：40 多个样式。Avalonia 用 ControlTheme / 选择器表达同样的东西，
+    那部分在共用的样式文件里维护（重写的是**表达方式**，不是取值）。
+    ================================================================================
+    -->
+    <Color x:Key="Color.Background">#F2EEE6</Color>
+    <Color x:Key="Color.Surface">#FCFAF6</Color>
+    <Color x:Key="Color.SurfaceSunken">#EAE5DA</Color>
+    <Color x:Key="Color.TextPrimary">#1F1E1A</Color>
+    <Color x:Key="Color.TextSecondary">#5A564E</Color>
+    <Color x:Key="Color.TextDisabled">#8F8A7E</Color>
+    <Color x:Key="Color.Border">#DFD9CC</Color>
+    <Color x:Key="Color.BorderStrong">#CFC8B9</Color>
+    <Color x:Key="Color.Accent">#ADC4B8</Color>
+    <Color x:Key="Color.AccentHover">#C8D9D0</Color>
+    <Color x:Key="Color.AccentPressed">#8EA99B</Color>
+    <Color x:Key="Color.AccentGlow">#8EA99B</Color>
+    <Color x:Key="Color.AccentDeep">#8EA99B</Color>
+    <Color x:Key="Color.AccentText">#4E6B5B</Color>
+    <Color x:Key="Color.Success">#8FAE85</Color>
+    <Color x:Key="Color.SuccessGlow">#8FAE85</Color>
+    <Color x:Key="Color.SuccessDeep">#527346</Color>
+    <Color x:Key="Color.SuccessText">#3E5A36</Color>
+    <Color x:Key="Color.Error">#B0705A</Color>
+    <Color x:Key="Color.ErrorGlow">#CD9986</Color>
+    <Color x:Key="Color.ErrorDeep">#96543F</Color>
+    <Color x:Key="Color.ErrorText">#79402E</Color>
+    <Color x:Key="Color.Connecting">#ADC4B8</Color>
+    <Color x:Key="Color.Shadow">#241F16</Color>
+    <SolidColorBrush x:Key="Brush.Background" Color="{StaticResource Color.Background}" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+    <SolidColorBrush x:Key="Brush.SurfaceSunken" Color="{StaticResource Color.SurfaceSunken}" />
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="{StaticResource Color.TextDisabled}" />
+    <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}" />
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="{StaticResource Color.AccentHover}" />
+    <SolidColorBrush x:Key="Brush.AccentPressed" Color="{StaticResource Color.AccentPressed}" />
+    <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
+    <SolidColorBrush x:Key="Brush.Error" Color="{StaticResource Color.Error}" />
+    <SolidColorBrush x:Key="Brush.Connecting" Color="{StaticResource Color.Connecting}" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="{StaticResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Brush.SuccessText" Color="{StaticResource Color.SuccessText}" />
+    <SolidColorBrush x:Key="Brush.ErrorText" Color="{StaticResource Color.ErrorText}" />
+    <SolidColorBrush x:Key="Brush.AccentGlow" Color="{StaticResource Color.AccentGlow}" />
+    <SolidColorBrush x:Key="Brush.SuccessGlow" Color="{StaticResource Color.SuccessGlow}" />
+    <SolidColorBrush x:Key="Brush.ErrorGlow" Color="{StaticResource Color.ErrorGlow}" />
+    <SolidColorBrush x:Key="Brush.SuccessDeep" Color="{StaticResource Color.SuccessDeep}" />
+    <SolidColorBrush x:Key="Brush.ErrorDeep" Color="{StaticResource Color.ErrorDeep}" />
+    <LinearGradientBrush x:Key="Glaze.Surface.Convex" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#FFFEFC" />
+        <GradientStop Offset="0.52" Color="#FAF7F0" />
+        <GradientStop Offset="1" Color="#EAE2D2" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Surface.Concave" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#E5DDCC" />
+        <GradientStop Offset="0.62" Color="#F3EFE4" />
+        <GradientStop Offset="1" Color="#FEFDFA" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Well.Concave" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#CEC5B0" />
+        <GradientStop Offset="0.55" Color="#E3DDCF" />
+        <GradientStop Offset="1" Color="#F8F5EE" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Bar.Plinth" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#FFFEFB" />
+        <GradientStop Offset="0.6" Color="#F8F5EC" />
+        <GradientStop Offset="1" Color="#EFE9DC" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Accent.Convex" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#D6E4DB" />
+        <GradientStop Offset="0.52" Color="#B5CABE" />
+        <GradientStop Offset="1" Color="#92AC9E" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Accent.Concave" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#87A295" />
+        <GradientStop Offset="0.6" Color="#A0B9AC" />
+        <GradientStop Offset="1" Color="#C5D8CE" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Error.Convex" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#CA9880" />
+        <GradientStop Offset="0.52" Color="#B0705A" />
+        <GradientStop Offset="1" Color="#934F3A" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Glaze.Track.Concave" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#C5BCA6" />
+        <GradientStop Offset="0.55" Color="#DAD3C3" />
+        <GradientStop Offset="1" Color="#F2EEE5" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="Glaze.Bisque" Color="#E4DFD2" />
+    <SolidColorBrush x:Key="Brush.Glaze.Rim" Color="#96FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Glaze.Bounce" Color="#4DFFFFFF" />
+    <SolidColorBrush x:Key="Brush.Glaze.Shade" Color="#33241F16" />
+    <RadialGradientBrush x:Key="Brush.Halo.Accent" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5" Center="0.5,0.5">
+        <GradientStop Offset="0.00" Color="#FF8EA99B" />
+        <GradientStop Offset="0.864" Color="#FF8EA99B" />
+        <GradientStop Offset="0.902" Color="#A88EA99B" />
+        <GradientStop Offset="0.939" Color="#5A8EA99B" />
+        <GradientStop Offset="0.972" Color="#228EA99B" />
+        <GradientStop Offset="1.000" Color="#008EA99B" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Halo.Success" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5" Center="0.5,0.5">
+        <GradientStop Offset="0.00" Color="#FF8FAE85" />
+        <GradientStop Offset="0.864" Color="#FF8FAE85" />
+        <GradientStop Offset="0.902" Color="#A88FAE85" />
+        <GradientStop Offset="0.939" Color="#5A8FAE85" />
+        <GradientStop Offset="0.972" Color="#228FAE85" />
+        <GradientStop Offset="1.000" Color="#008FAE85" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Halo.Error" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5" Center="0.5,0.5">
+        <GradientStop Offset="0.00" Color="#FFB0705A" />
+        <GradientStop Offset="0.864" Color="#FFB0705A" />
+        <GradientStop Offset="0.902" Color="#A8B0705A" />
+        <GradientStop Offset="0.939" Color="#5AB0705A" />
+        <GradientStop Offset="0.972" Color="#22B0705A" />
+        <GradientStop Offset="1.000" Color="#00B0705A" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Orb.Idle" GradientOrigin="0.36,0.30" RadiusX="0.62" RadiusY="0.62" Center="0.5,0.5">
+        <GradientStop Offset="0" Color="#FFFEFB" />
+        <GradientStop Offset="0.35" Color="#F6F1E4" />
+        <GradientStop Offset="0.72" Color="#E2D9C4" />
+        <GradientStop Offset="1" Color="#BFB397" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Orb.Connected" GradientOrigin="0.36,0.30" RadiusX="0.62" RadiusY="0.62" Center="0.5,0.5">
+        <GradientStop Offset="0" Color="#EDF4E9" />
+        <GradientStop Offset="0.35" Color="#C9DCC1" />
+        <GradientStop Offset="0.72" Color="#9CBD8F" />
+        <GradientStop Offset="1" Color="#6C8C61" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Orb.Accent" GradientOrigin="0.36,0.30" RadiusX="0.62" RadiusY="0.62" Center="0.5,0.5">
+        <GradientStop Offset="0" Color="#EBF2ED" />
+        <GradientStop Offset="0.35" Color="#C9DCD1" />
+        <GradientStop Offset="0.72" Color="#A2BEAF" />
+        <GradientStop Offset="1" Color="#74907E" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Orb.Error" GradientOrigin="0.36,0.30" RadiusX="0.62" RadiusY="0.62" Center="0.5,0.5">
+        <GradientStop Offset="0" Color="#F9EAE3" />
+        <GradientStop Offset="0.35" Color="#E3BCA8" />
+        <GradientStop Offset="0.72" Color="#C58A6D" />
+        <GradientStop Offset="1" Color="#9A583C" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="Brush.Orb.Specular" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5" Center="0.5,0.5">
+        <GradientStop Offset="0" Color="#CCFFFFFF" />
+        <GradientStop Offset="0.45" Color="#2EFFFFFF" />
+        <GradientStop Offset="1" Color="#00FFFFFF" />
+    </RadialGradientBrush>
+    <FontFamily x:Key="Font.Family">Inter, Noto Sans CJK SC, Source Han Sans SC, Noto Sans SC, WenQuanYi Micro Hei, DejaVu Sans, sans-serif</FontFamily>
+    <x:Double x:Key="Font.SizeTitle">20</x:Double>
+    <x:Double x:Key="Font.SizePrimary">16</x:Double>
+    <x:Double x:Key="Font.SizeBody">14</x:Double>
+    <x:Double x:Key="Font.SizeSecondary">13</x:Double>
+    <x:Double x:Key="Font.SizeCaption">12</x:Double>
+    <x:Double x:Key="Space.XS">4</x:Double>
+    <x:Double x:Key="Space.SM">8</x:Double>
+    <x:Double x:Key="Space.MD">12</x:Double>
+    <x:Double x:Key="Space.LG">16</x:Double>
+    <x:Double x:Key="Space.XL">24</x:Double>
+    <x:Double x:Key="Space.XXL">32</x:Double>
+    <x:Double x:Key="Space.Detach">64</x:Double>
+    <CornerRadius x:Key="Radius.SM">8</CornerRadius>
+    <CornerRadius x:Key="Radius.MD">10</CornerRadius>
+    <CornerRadius x:Key="Radius.ModeThumb">10</CornerRadius>
+    <CornerRadius x:Key="Radius.SwitchThumb">5</CornerRadius>
+    <CornerRadius x:Key="Radius.SwitchTrackInner">5</CornerRadius>
+    <CornerRadius x:Key="Radius.LG">12</CornerRadius>
+    <CornerRadius x:Key="Radius.Pill">14</CornerRadius>
+    <CornerRadius x:Key="Radius.MD.Left">10,0,0,10</CornerRadius>
+    <CornerRadius x:Key="Radius.MD.Right">0,10,10,0</CornerRadius>
+    <x:Double x:Key="Size.ContentWidth">352</x:Double>
+    <x:Double x:Key="Size.LinePrimary">24</x:Double>
+    <x:Double x:Key="Size.LineSecondary">20</x:Double>
+    <x:Double x:Key="Size.StatusGlyph">20</x:Double>
+    <x:Double x:Key="Size.Spinner">12</x:Double>
+    <x:Double x:Key="Size.Control">36</x:Double>
+    <x:Double x:Key="Size.PrimaryButton">40</x:Double>
+    <x:Double x:Key="Size.TextLink">28</x:Double>
+    <x:Double x:Key="Size.SettingsRow">44</x:Double>
+    <x:Double x:Key="Size.NavBar">52</x:Double>
+    <x:Double x:Key="Size.SwitchTrackWidth">40</x:Double>
+    <x:Double x:Key="Size.SwitchTrackHeight">20</x:Double>
+    <x:Double x:Key="Size.SwitchThumb">14</x:Double>
+    <x:Double x:Key="Size.SwitchThumbTravel">20</x:Double>
+    <x:Double x:Key="Size.Hairline">1</x:Double>
+    <x:Double x:Key="Stroke.Icon">1.5</x:Double>
+    <x:Double x:Key="Stroke.Spinner">2</x:Double>
+    <x:Double x:Key="Stroke.OrbIcon">1.8</x:Double>
+    <Thickness x:Key="Thickness.ButtonPadding">12,0</Thickness>
+    <Thickness x:Key="Thickness.TextInputPadding">8,0</Thickness>
+    <Thickness x:Key="Thickness.SwitchContentMargin">8,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.SwitchThumbLeft">2,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.None">0</Thickness>
+    <Thickness x:Key="Thickness.PageVertical">0,24,0,24</Thickness>
+    <Thickness x:Key="Thickness.Hairline">1</Thickness>
+    <Thickness x:Key="Thickness.SegmentLeft">1,1,0,1</Thickness>
+    <Thickness x:Key="Thickness.SegmentRight">0,1,1,1</Thickness>
+    <Thickness x:Key="Thickness.TopXS">0,4,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopSM">0,8,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopMD">0,12,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopLG">0,16,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopXL">0,24,0,0</Thickness>
+    <Thickness x:Key="Thickness.LeftXS">4,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.LeftSM">8,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.RimTop">0,1,0,0</Thickness>
+    <Thickness x:Key="Thickness.RimBottom">0,0,0,1</Thickness>
+    <StreamGeometry x:Key="Geometry.ChevronRight">M 0.75,0.75 L 5.75,5.75 L 0.75,10.75</StreamGeometry>
+    <StreamGeometry x:Key="Geometry.ChevronLeft">M 5.75,0.75 L 0.75,5.75 L 5.75,10.75</StreamGeometry>
+    <StreamGeometry x:Key="Geometry.ArrowUp">M 2.1,5.4 L 5.5,2 L 8.9,5.4 M 5.5,2 L 5.5,9</StreamGeometry>
+    <StreamGeometry x:Key="Geometry.ArrowDown">M 2.1,5.6 L 5.5,9 L 8.9,5.6 M 5.5,9 L 5.5,2</StreamGeometry>
+    <StreamGeometry x:Key="Geometry.SpinnerArc">M 6,1 A 5,5 0 0 1 11,6</StreamGeometry>
+    <StreamGeometry x:Key="Geometry.PowerArc">M 10.54,13.36 A 12,12 0 1 0 29.46,13.36</StreamGeometry>
+    <StreamGeometry x:Key="Geometry.PowerStem">M 20,7.25 L 20,18.75</StreamGeometry>
+    <x:TimeSpan x:Key="Motion.Duration.Fast">0:0:0.140</x:TimeSpan>
+    <x:TimeSpan x:Key="Motion.Duration.Base">0:0:0.240</x:TimeSpan>
+    <x:TimeSpan x:Key="Motion.Duration.SpinnerCycle">0:0:1.0</x:TimeSpan>
+    <ea:CubicEaseOut x:Key="Motion.Ease.Out" />
+    <x:TimeSpan x:Key="Motion.Duration.Breath">0:0:2.6</x:TimeSpan>
+    <x:TimeSpan x:Key="Motion.Duration.Pulse">0:0:1.0</x:TimeSpan>
+    <x:TimeSpan x:Key="Motion.Duration.Press">0:0:0.120</x:TimeSpan>
+    <x:TimeSpan x:Key="Motion.Duration.Spring">0:0:0.320</x:TimeSpan>
+    <x:TimeSpan x:Key="Motion.Duration.Slide">0:0:0.300</x:TimeSpan>
+    <ea:SineEaseInOut x:Key="Motion.Ease.Breath" />
+    <ea:ElasticEaseOut x:Key="Motion.Ease.Spring" />
+    <ea:BackEaseOut x:Key="Motion.Ease.Slide" />
+    <ea:BackEaseOut x:Key="Motion.Ease.Overshoot" />
+    <x:Double x:Key="Motion.Orb.BreathAlphaFrom">0.06</x:Double>
+    <x:Double x:Key="Motion.Orb.BreathAlphaTo">0.52</x:Double>
+    <x:Double x:Key="Motion.Orb.PulseAlphaFrom">0.08</x:Double>
+    <x:Double x:Key="Motion.Orb.PulseAlphaTo">0.70</x:Double>
+    <x:Double x:Key="Motion.Orb.BreathScale">1.04</x:Double>
+    <x:Double x:Key="Motion.Orb.PulseScale">1.06</x:Double>
+    <x:Double x:Key="Size.Orb">140</x:Double>
+    <x:Double x:Key="Size.OrbHalo">196</x:Double>
+    <x:Double x:Key="Size.OrbGlow">162</x:Double>
+    <x:Double x:Key="Size.OrbIcon">40</x:Double>
+    <x:Double x:Key="Size.GlazeRim">1</x:Double>
+    <x:Double x:Key="Size.OrbSpecularWidth">96</x:Double>
+    <x:Double x:Key="Size.OrbSpecularHeight">56</x:Double>
+    <x:Double x:Key="Size.OrbSpecularTop">16</x:Double>
+    <x:Double x:Key="Size.ModeTrackHeight">44</x:Double>
+    <x:Double x:Key="Size.ModeThumbWidth">168</x:Double>
+    <x:Double x:Key="Size.ModeThumbHeight">36</x:Double>
+    <x:Double x:Key="Size.ModeThumbTravel">176</x:Double>
+    <x:Double x:Key="Size.CheckButton">40</x:Double>
+    <x:Double x:Key="Size.TrafficChart">44</x:Double>
+    <x:Double x:Key="Size.TrafficLabel">18</x:Double>
+    <x:Double x:Key="Size.TrafficArrow">11</x:Double>
+    <Thickness x:Key="Thickness.ModeThumbInset">4,0,0,0</Thickness>
+    <Thickness x:Key="Thickness.TopXXL">0,32,0,0</Thickness>
+    <Thickness x:Key="Thickness.CheckPadding">20,0</Thickness>
+    <DropShadowEffect x:Key="Shadow.Ambient" OffsetX="-0.0" OffsetY="-6.0" BlurRadius="22.0" Color="{StaticResource Color.Shadow}" Opacity="0.17" />
+    <DropShadowEffect x:Key="Shadow.Contact" OffsetX="-0.0" OffsetY="-2.0" BlurRadius="5.0" Color="{StaticResource Color.Shadow}" Opacity="0.22" />
+    <DropShadowEffect x:Key="Shadow.OrbAmbient" OffsetX="-0.0" OffsetY="-14.0" BlurRadius="42.0" Color="{StaticResource Color.Shadow}" Opacity="0.24" />
+    <DropShadowEffect x:Key="Shadow.OrbContact" OffsetX="-0.0" OffsetY="-4.0" BlurRadius="10.0" Color="{StaticResource Color.Shadow}" Opacity="0.15" />
+    <x:Double x:Key="Size.ThemePicker">186</x:Double>
+    <CornerRadius x:Key="Radius.None">0</CornerRadius>
+    <Thickness x:Key="Thickness.SegmentMiddle">1,1,0,1</Thickness>
+    <!-- ============ 别名令牌 ============
+         同一个共享样式里、同一个属性在三套皮肤下取值不同的那些位置。
+         取值从 windows/MyProxy/Themes/Ceramic.xaml 逐条比出来（.probe/skin-diff.py）
+         并搬到这里，于是共享样式引用别名就能让三套皮肤都逐值一致。
+         生成器里的表是三份皮肤共用的：任意一套缺一项，生成器直接报错。 -->
+    <SolidColorBrush x:Key="Alias.OrbRim.Idle" Color="{DynamicResource Color.BorderStrong}" />
+    <SolidColorBrush x:Key="Alias.OrbRim.Connected" Color="{DynamicResource Color.SuccessText}" />
+    <SolidColorBrush x:Key="Alias.OrbRim.Connecting" Color="{DynamicResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Alias.OrbRim.Error" Color="{DynamicResource Color.ErrorText}" />
+    <SolidColorBrush x:Key="Alias.OrbIcon.Idle" Color="{DynamicResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Alias.OrbIcon.Connected" Color="{DynamicResource Color.SuccessText}" />
+    <SolidColorBrush x:Key="Alias.OrbIcon.Connecting" Color="{DynamicResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Alias.OrbIcon.Error" Color="{DynamicResource Color.ErrorText}" />
+    <x:Double x:Key="Alias.OrbSpecularWidth">60</x:Double>
+    <x:Double x:Key="Alias.OrbSpecularHeight">36</x:Double>
+    <Thickness x:Key="Alias.OrbSpecularMargin">55,50,0,0</Thickness>
+    <HorizontalAlignment x:Key="Alias.OrbSpecularAlign">Left</HorizontalAlignment>
+    <x:String x:Key="Alias.OrbHoverScale">1.02</x:String>
+    <x:String x:Key="Alias.OrbPressScale">0.95</x:String>
+    <LinearGradientBrush x:Key="Alias.CheckFill.Hover" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#FFFEFC" />
+        <GradientStop Offset="0.52" Color="#FAF7F0" />
+        <GradientStop Offset="1" Color="#EAE2D2" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Alias.CheckFill.Pressed" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#FFFEFC" />
+        <GradientStop Offset="0.52" Color="#FAF7F0" />
+        <GradientStop Offset="1" Color="#EAE2D2" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="Alias.CheckFill.Disabled" Color="{DynamicResource Color.SurfaceSunken}" />
+    <SolidColorBrush x:Key="Alias.FocusRingBrush" Color="{DynamicResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Alias.StatusText.Connected" Color="{DynamicResource Color.SuccessText}" />
+    <SolidColorBrush x:Key="Alias.StatusText.Connecting" Color="{DynamicResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Alias.StatusText.Error" Color="{DynamicResource Color.ErrorText}" />
+    <SolidColorBrush x:Key="Alias.TextLink.HoverFill" Color="#96FFFFFF" />
+    <SolidColorBrush x:Key="Alias.TextLink.HoverStroke" Color="{DynamicResource Color.BorderStrong}" />
+</ResourceDictionary>

@@ -1,0 +1,254 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+  ================================================================================
+  文本 / 纯图标样式：windows/MyProxy/Themes/DesignTokens.xaml 的逐项照搬。
+  ================================================================================
+
+  **用 ControlTheme，不用带 x:Key 的 Style。** Avalonia 的 StyledElement 只有
+  `Styles`（集合）与 `Theme`（ControlTheme），没有 `Style` 属性；带 x:Key 的 Style
+  在视图侧没有任何合法引用方式（`{DynamicResource X}` 只能赋值给属性，不能「应用样式」），
+  而且它一旦被放进任何 Styles 集合就会按 selector 全局命中——key 形同虚设。
+  ControlTheme 才是 WPF `Style="{StaticResource X}"` 的对位物：视图侧写
+  `Theme="{DynamicResource PageTitleTextStyle}"`；TextBlock / Path 这类非模板控件同样适用
+  （`Theme` 定义在 StyledElement 上，TextBlock 有自己的 Theme 属性）。
+
+  引用方式（View）：
+      <TextBlock Text="绑定设备" Theme="{DynamicResource PageTitleTextStyle}" />
+      <Path Data="{DynamicResource Geometry.ArrowUp}" Theme="{DynamicResource TrafficArrowStyle}" />
+
+  装配方式：本文件与 *.Tokens.axaml 要用 **ResourceInclude 合并进 ResourceDictionary**
+  （例如 App.axaml 的 `<ResourceDictionary.MergedDictionaries>`）——它们只是资源。
+  不要用 `StyleInclude`：那是给根为 Styles/Style 的文件用的，而把 ControlTheme 放进
+  Styles 集合会在运行时抛异常（ControlTheme cannot be added to a Styles collection），
+  放进 MergedDictionaries 也会丢掉嵌套样式（XAML 编译器有专门的警告）。
+
+  取值一律引用令牌（DesignTokens.Tokens.axaml），不写十六进制、不写魔法数字：
+  三套皮肤各自提供同名令牌，所以这一份样式同时服务三套皮肤，换肤在运行时生效。
+
+  覆盖：DesignTokens.xaml 里 TargetType 为 TextBlock 的 16 个样式（含 StatusGlyphTextStyle，
+  它是 StatusPrimaryTextStyle 的派生）与 TrafficArrowStyle（Path，速率箭头，与速率标签成对）。
+  模板化控件（Button / RadioButton / CheckBox / TextBox / ProgressBar）在各自的文件里。
+
+  方言与取舍（逐条都核对过 11.3.2 的源码/元数据）：
+    - WPF 的 BasedOn → Avalonia 的 `ControlTheme.BasedOn`（`Style` 没有 BasedOn，
+      只有 ControlTheme 有），所以 SuccessCaptionTextStyle / DestructiveTextStyle /
+      StatusGlyphTextStyle / 状态变体在这里都是**真继承**，取值与 Windows 端逐值相同。
+    - TextOptions.TextFormattingMode / TextRenderingMode：**没有对应物**，本族样式里
+      本来也没有（它们只出现在 MainWindow 与三个 UserControl 的根上），Linux 由
+      fontconfig / HarfBuzz 决定栅格化。
+    - Typography.NumeralAlignment="Tabular" → FontFeatures="tnum"（OpenType 特性）。
+      Avalonia 11.3 没有 Typography 类，等宽数字只能走 FontFeatures。
+    - Visibility="Collapsed" → IsVisible="False"（Avalonia 11 没有 Visibility 属性）。
+    - WPF 的 DataTrigger（StatusPrimaryTextStyle 按 {Binding State}、CheckResultTextStyle
+      按 {Binding CheckSeverity} 换前景色）**没有** Avalonia 对应物，这里把每个状态做成
+      一个 BasedOn 基主题的 ControlTheme：
+        State：        StatusPrimaryTextStyle.Connected / .Error / .Connecting / .Disconnecting
+        CheckSeverity：CheckResultTextStyle.Good / .Bad
+      取值就是基样式 + Windows 端那条触发器的颜色，由 View 选一个（`Theme` 是
+      StyledProperty，也可以直接绑定到 ViewModel 给出的主题资源）。
+      StatusGlyphTextStyle 的「Connecting → Collapsed」同理没有可搬的 setter，
+      请由 View 绑 IsVisible。Linux 端 MainViewModel 已有 StateBrush /
+      StatusSubTextForeground 这种「ViewModel 直接给画刷」的先例，走那条路也成立。
+    - 优先级提醒：Avalonia 里 `Styles` 集合里的样式**优先于** ControlTheme
+      （FrameType.Style > FrameType.Theme）。所以别再给本族的 TextBlock 叠一条泛化的
+      `Style Selector="TextBlock"`，那会盖掉这里的取值。
+
+  ⚠ 皮肤级差异（**当前按权威默认皮肤 DesignTokens.xaml 取值**；要逐值一致必须由生成器
+  新增皮肤令牌——样式文件里不自己加 key）：
+    1) 本文件的状态色：默认皮肤用**面积色** Brush.Success(#6D9E86) / Brush.Error(#A85A5E) /
+       Brush.Connecting(#5B8A9C)，Ceramic 与 Porcelain 改用**文字色**
+       Brush.SuccessText(#3E5A36 / #446A53) / Brush.ErrorText(#79402E / #8E4439) /
+       Brush.AccentText(#4E6B5B / #2C6650)。
+       需要 `Brush.StatusText.Connected` / `.Error` / `.Connecting` 三个令牌。
+    2) LinkButtonStyles.axaml 里还有两处：TextLinkButtonStyle 的 hover 底色
+       （默认 Brush.Border，Ceramic 是 Glaze.Surface.Convex + 1px Brush.Border 描边，
+       Porcelain 是 Brush.SurfaceSunken）与 InlineLinkButtonStyle 的前景色
+       （默认 Brush.Accent，Ceramic / Porcelain 用 Brush.AccentText），
+       以及焦点环描边色（默认 Brush.TextPrimary，Ceramic / Porcelain 用 Brush.AccentText）。
+  -->
+
+  <!-- ============ 页面标题 ============ -->
+
+  <ControlTheme x:Key="PageTitleTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeTitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="PrimaryTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizePrimary}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="BodyTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="SecondaryTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </ControlTheme>
+
+  <!-- 行尾的状态短语（「已绑定」）。用 SuccessText 而非面积色 Success：它是文字，要过 4.5:1。
+       Windows 端是 BasedOn SecondaryTextStyle；ControlTheme 支持 BasedOn，所以这里是真继承。 -->
+  <ControlTheme x:Key="SuccessCaptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource SecondaryTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.SuccessText}" />
+  </ControlTheme>
+
+  <!-- 会造成不可逆后果的行（「重新绑定」）。与普通行同字号，只换颜色：
+       靠颜色 + 一句后果说明 + Space.Detach 的距离三者一起把它与设置区分开，
+       不靠加粗或加框——那会让它读成一个主按钮。 -->
+  <ControlTheme x:Key="DestructiveTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.ErrorText}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="CaptionTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeCaption}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </ControlTheme>
+
+  <!-- ============ 状态文字 ============ -->
+
+  <!-- 基色是 TextPrimary；Connected / Error / Connecting / Disconnecting 由 Windows 端的
+       DataTrigger 换色，见下面四个 BasedOn 的变体。 -->
+  <ControlTheme x:Key="StatusPrimaryTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizePrimary}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </ControlTheme>
+
+  <!-- 四个状态变体：取值 = 基样式 + Windows 端 DataTrigger 的颜色。
+       默认皮肤用面积色（Brush.Success / Error / Connecting），与 Windows 端一致；
+       Ceramic / Porcelain 在 Windows 端改用文字色，见文件头「皮肤级差异」1。
+       这两个样式当前没有被任何视图使用（组件库条目），保留是为了与 Windows 端一一对应。 -->
+  <ControlTheme x:Key="StatusPrimaryTextStyle.Connected" TargetType="TextBlock" BasedOn="{StaticResource StatusPrimaryTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="StatusPrimaryTextStyle.Error" TargetType="TextBlock" BasedOn="{StaticResource StatusPrimaryTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Error}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="StatusPrimaryTextStyle.Connecting" TargetType="TextBlock" BasedOn="{StaticResource StatusPrimaryTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Connecting}" />
+  </ControlTheme>
+
+  <!-- Windows 端 Disconnecting 与 Connecting 取同一个值（Brush.Connecting），
+       这里也照抄一份，免得读者以为漏了状态。 -->
+  <ControlTheme x:Key="StatusPrimaryTextStyle.Disconnecting" TargetType="TextBlock" BasedOn="{StaticResource StatusPrimaryTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Connecting}" />
+  </ControlTheme>
+
+  <!-- 状态符号槽的文字：居中，Connecting 时让位给 Spinner。
+       Windows 端用 DataTrigger 把 Connecting 变成 Visibility=Collapsed；Avalonia 没有
+       Visibility 属性，也就没有可搬的 setter——请由 View 绑 IsVisible。 -->
+  <ControlTheme x:Key="StatusGlyphTextStyle" TargetType="TextBlock" BasedOn="{StaticResource StatusPrimaryTextStyle}">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="StatusSubTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="SectionLabelTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </ControlTheme>
+
+  <!-- 行内错误：默认收起（WPF 的 Visibility=Collapsed → Avalonia 的 IsVisible=False）。
+       View 用局部值绑定 IsVisible 时会盖掉这里——与 Windows 端的优先级一致。 -->
+  <ControlTheme x:Key="InlineErrorTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.ErrorText}" />
+    <Setter Property="IsVisible" Value="False" />
+  </ControlTheme>
+
+  <!-- ============ 自检结果行 ============ -->
+  <!-- 基色是 TextSecondary；Good / Bad 见下面两个 BasedOn 的变体。 -->
+
+  <ControlTheme x:Key="CheckResultTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="CheckResultTextStyle.Good" TargetType="TextBlock" BasedOn="{StaticResource CheckResultTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.SuccessText}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="CheckResultTextStyle.Bad" TargetType="TextBlock" BasedOn="{StaticResource CheckResultTextStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.ErrorText}" />
+  </ControlTheme>
+
+  <!-- ============ 速率行 ============ -->
+
+  <!-- 上下行箭头：11×11 盒、Stroke.Icon 描边、圆头圆角。
+       WPF 的 StrokeStartLineCap / StrokeEndLineCap / StrokeLineJoin 在 Avalonia 11 里
+       不存在（Shape 只有 StrokeLineCap / StrokeJoin，两端同帽、顶点同 join），
+       所以三条并两条，取值仍是 Round。 -->
+  <ControlTheme x:Key="TrafficArrowStyle" TargetType="Path">
+    <Setter Property="Width" Value="{DynamicResource Size.TrafficArrow}" />
+    <Setter Property="Height" Value="{DynamicResource Size.TrafficArrow}" />
+    <Setter Property="Stroke" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="StrokeThickness" Value="{DynamicResource Stroke.Icon}" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </ControlTheme>
+
+  <!-- 等宽数字：WPF 的 Typography.NumeralAlignment="Tabular" 换成 OpenType 的 tnum，
+       目的相同——数值跳动时字符不横向抖动。Avalonia 没有 Typography 类。 -->
+  <ControlTheme x:Key="TrafficLabelTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="FontFeatures" Value="tnum" />
+  </ControlTheme>
+
+  <!-- ============ 浮空层（主页） ============ -->
+  <!-- 能量球是页面唯一的视觉中心，标题退成一行标签。BindView / SettingsView 仍用
+       PageTitleTextStyle，不受影响。 -->
+
+  <ControlTheme x:Key="OrbPageTitleStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizeSecondary}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </ControlTheme>
+
+  <!-- 状态文字（浮空层放大版）：Normal 而不是 Medium/SemiBold —— 瓷是含蓄的，
+       SemiBold 在这套低对比配色里会显得吵。 -->
+  <ControlTheme x:Key="OrbStatusTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.SizePrimary}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </ControlTheme>
+
+</ResourceDictionary>

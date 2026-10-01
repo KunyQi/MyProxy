@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!--
+      WakeLock.acquire() throws SecurityException without this, so the
+      transition wake lock in MyProxyVpnService silently did nothing.
+    -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
+      Update Plane：把已验证的 APK 交给系统安装器。用户仍须确认，应用
+      永不静默安装；没有这条权限时 PackageInstaller 会直接拒绝会话。
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:name=".MyProxyApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:theme="@style/Theme.MyProxy">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.MyProxy">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          stopWithTask 显式写成 false：用户把 App 从最近任务里划掉时，隧道
+          （以及它的常驻通知）要留下。默认值本来就是 false，但这是保活链路上
+          最容易被后来者「顺手加一句」改掉的地方，写出来让它成为一条明确结论。
+          对应的 onTaskRemoved 在 MyProxyVpnService 里，刻意什么都不做。
+        -->
+        <service
+            android:name=".vpn.MyProxyVpnService"
+            android:exported="true"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="vpn" />
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <!--
+          Quick settings tile. Runs in this process and reads the same
+          ConnectionController the app screen does, so the two can never show
+          different states.
+        -->
+        <service
+            android:name=".tile.MyProxyTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_myproxy"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!--
+          开机与应用升级之后把隧道拉回来。此前 RECEIVE_BOOT_COMPLETED 这条权限
+          声明了却没有接收者，「启动后自动连接」实际只在打开 App 时生效。
+
+          exported 必须为 true 才收得到这两条系统广播；两者都是 protected
+          broadcast，只有系统能发，第三方 App 伪造不了。
+
+          是否真的启动由接收者自己判断（自动连接开关 + VPN 授权 + 已验证配置），
+          见 BootRecoveryReceiver 的类注释。
+        -->
+        <receiver
+            android:name=".vpn.BootRecoveryReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

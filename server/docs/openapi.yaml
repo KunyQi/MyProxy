@@ -1,0 +1,2647 @@
+openapi: 3.0.3
+info:
+  title: MyProxy Server API
+  version: 0.1.0
+  description: |
+    MyProxy 控制面 API。Windows、Android 与 Linux 使用同一配对和配置协议。
+    - Admin 鉴权：长期 Admin Token 或网页临时会话 Bearer；ui-ticket 只接受长期 Token。
+    - Device 鉴权：Authorization: Bearer <deviceToken>。
+    - 统一错误体：{"error":{"code":"...","message":"..."}}。
+    - 公网仅开放 health、connectivity-check、六条 Device API 与三端 latest 精确路由。
+    - Admin API、管理网页及 readyz 仅通过私有后端访问。
+    - deployment.json 配置 HTTPS 源站，客户端使用标准 CA 链、有效期及主机名验证。
+servers:
+  - url: https://api.example.invalid
+    description: 公开 Device API 示例源站（部署前替换）
+  - url: https://127.0.0.1:1820
+    description: 私有完整控制面（仅本机或 SSH 隧道）
+  - url: http://127.0.0.1:8090
+    description: 本地运行 run_local.py
+tags:
+  - name: public
+    description: 公开接口，无鉴权
+  - name: device
+    description: 设备客户端接口（claim 公开，config/heartbeat 需设备 Bearer）
+  - name: admin
+    description: 管理接口，需 Admin Bearer
+paths:
+  /connectivity-check:
+    get:
+      tags: [public]
+      security: []
+      summary: 隧道连通性检测
+      description: 精确 GET 路径，不接受查询参数；返回空 204，不写数据库。不跟随重定向的客户端通过隧道访问此接口。
+      operationId: connectivityCheck
+      responses:
+        '204':
+          description: 检测端点可达，响应体为空。
+        '404':
+          description: 路径、方法或查询参数不匹配。
+  /api/admin/ui-ticket:
+    post:
+      tags: [admin]
+      security:
+        - AdminBearerAuth: []
+      description: Private listener. Long-lived Admin Bearer only; creates a single-use 60-second ticket.
+      responses:
+        '200': {description: 'JSON ticket and expiresIn (60).'}
+        '401': {description: Invalid long-lived Admin Bearer.}
+        '429': {description: Too many outstanding tickets.}
+  /admin/session:
+    post:
+      tags: [admin]
+      security: []
+      description: Private listener only. Atomically consume a ticket; no cookies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket]
+              properties:
+                ticket: {type: string}
+      responses:
+        '200': {description: 'JSON token and expiresIn (3600).'}
+        '401': {description: Invalid or expired or consumed ticket.}
+        '429': {description: Too many active sessions.}
+  /api/admin/ui-session:
+    delete:
+      tags: [admin]
+      security:
+        - AdminBearerAuth: []
+      description: Revoke the calling UI session Bearer.
+      responses:
+        '200': {description: 'JSON ok (true).'}
+        '401': {description: Invalid Bearer.}
+  /healthz:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+            description: 部署配置；必须与客户端地址及 TLS 信任模式一致。
+          deviceApiPort:
+            default: "443"
+    get:
+      tags:
+        - public
+      summary: 健康检查
+      description: 公开健康检查，不写 DB。
+      operationId: healthz
+      responses:
+        "200":
+          description: 服务健康
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "500":
+          description: 服务内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /readyz:
+    servers:
+      - url: https://127.0.0.1:1820
+        description: 私有回环 readiness（公网 nginx 不代理）
+    get:
+      tags:
+        - public
+      summary: 数据库与 x-ui readiness
+      description: |
+        仅用于私有运维检查。db/xui 任一检查失败返回 503；响应不泄露路径、SQL、profile
+        或错误详情。所有响应带安全的 X-Request-ID，可用于关联结构化日志。
+      operationId: readyz
+      responses:
+        "200":
+          description: 数据库与 x-ui 均可读
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+        "503":
+          description: 数据库或 x-ui 不可读
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+  /api/device/claim:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    post:
+      tags:
+        - device
+      summary: 配对码换取设备身份与首份配置
+      description: |
+        无鉴权。输入配对码，服务端校验并返回设备身份、设备 Token 与首份 ServerProfile。
+        客户端只输入配对码：Device API 地址由 deployment.json 在构建时提供，
+        HTTPS 使用系统信任的证书链、有效期与主机名校验，
+        用户不选服务器。返回的 config.server 是 Xray 数据面地址，不是 Device API 地址。
+        pairingCode 规范化：去首尾空白 -> 去 - 和空格 -> uppercase -> 每 4 位插回 -。
+        clientInstanceId 可选；新客户端应持久化 UUID v4。同一配对码、同一安装标识在
+        10 分钟窗口内可重试并得到相同 deviceId/deviceToken；不同标识或超窗返回 PairingInvalid。
+      operationId: claim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimRequest"
+      responses:
+        "200":
+          description: 绑定成功，返回设备身份与首份配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimResponse"
+        "400":
+          description: 参数或业务错误（BadRequest / PairingInvalid / PairingExpired）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 请求过于频繁（RateLimited）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/device/config:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    get:
+      tags:
+        - device
+      summary: 获取最新配置
+      description: |
+        设备 Bearer 鉴权。返回最新 configVersion 与 ServerProfile。
+        设备 status 必须为 active；同时更新 last_seen_at。
+      operationId: getDeviceConfig
+      security:
+        - DeviceBearerAuth: []
+      responses:
+        "200":
+          description: 最新配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceConfigResponse"
+        "401":
+          description: 设备已失效（TokenInvalid / DeviceNotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/device/heartbeat:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    post:
+      tags:
+        - device
+      summary: 设备心跳
+      description: |
+        设备 Bearer 鉴权。请求体允许为空对象或 {}。服务端更新 last_seen_at，
+        记录本次请求的出口地址（完整地址入库，只经 Admin API 出站），并顺带触发一次
+        受节流的 x-ui 计数器扫描（失败被吞掉，不影响心跳）。响应带回当前 configVersion、
+        本设备解析出的 release 身份与 featureFlags。
+      operationId: heartbeat
+      security:
+        - DeviceBearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: 可为空对象 {}
+              additionalProperties: true
+      responses:
+        "200":
+          description: 心跳成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeartbeatResponse"
+        "401":
+          description: 设备已失效（TokenInvalid / DeviceNotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/device/update:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    get:
+      tags:
+        - device
+      summary: 查询本设备被指派的 release
+      description: |
+        Update Plane。设备 Bearer 鉴权。返回本设备当前生效的 release 及其
+        **已签名 manifest 原始字节**（base64），以及生效的 feature flags。
+
+        解析顺序为 device → user → platform，先命中者生效，且命中的 release
+        必须处于 published 状态；revoked 的 release 会继续向下一层回落，
+        因此「撤销一个坏版本」即是一次全量回滚。
+
+        服务端只做搬运：manifest 的签名由客户端用内置的 Ed25519 公钥验证，
+        签名覆盖 `myproxy-release-manifest-v1\0` + manifest 原始字节。
+        客户端必须**先验签再解析**，且不得重新序列化 manifest。
+      operationId: deviceUpdate
+      security:
+        - DeviceBearerAuth: []
+      responses:
+        "200":
+          description: 查询成功（update 为 null 表示当前没有指派）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUpdateResponse"
+        "401":
+          description: 设备已失效（TokenInvalid / DeviceNotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/device/update/report:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    post:
+      tags:
+        - device
+      summary: 回报安装结果
+      description: |
+        设备 Bearer 鉴权。安装成功 / 失败 / 已回滚后回报，供管理员发现
+        「某个 release 在现场大面积失败」并撤销它。
+
+        本接口**只写审计**：status=installed 时会同步 devices.client_version，
+        但任何回报都不会改变该设备被指派的 release —— 否则设备可以凭回报
+        把自己说到另一个版本上。回滚动作本身由客户端本地完成。
+      operationId: deviceUpdateReport
+      security:
+        - DeviceBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReportRequest"
+      responses:
+        "200":
+          description: 已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: 参数非法（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 设备已失效（TokenInvalid / DeviceNotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: releaseId 不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/device/usage:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    post:
+      tags:
+        - device
+      summary: 回报聚合用量
+      description: |
+        Observability Plane 的设备侧入口。设备 Bearer 鉴权。
+
+        **只接受服务类别的聚合字节数，且类别取自封闭词表**（video / social / messaging /
+        web / download / other）。请求模型不接受域名、URL 或单条连接记录。
+        词表外的类别返回校验错误，避免将客户端与服务端的类别版本差异静默
+        合并到 other，影响聚合统计的可解释性。
+
+        设备**不能回填历史**：只允许当前小时或上一个小时（跨小时边界的请求），
+        否则单台设备就能重写某人一整个月的使用趋势。
+
+        本接口**无法改变「用了多少」**：总量来自服务端对 x-ui 累计计数器的扫描，
+        那是对数据面的测量。客户端只能说自己搬的是什么类型的流量，不能说搬了多少。
+      operationId: deviceReportUsage
+      security:
+        - DeviceBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsageReportRequest"
+      responses:
+        "200":
+          description: 已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: 参数非法或类别不在词表内（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 设备已失效（TokenInvalid / DeviceNotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /client/windows/latest.json:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    get:
+      tags:
+        - public
+      summary: Windows 客户端更新检查
+      description: |
+        公开接口，无鉴权。值来自 server_meta 表；缺省为
+        {"version":"0.1.0","downloadUrl":"","sha256":"","mandatory":false}。
+      operationId: getWindowsLatest
+      responses:
+        "200":
+          description: 最新版本信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /client/android/latest.json:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    get:
+      tags:
+        - public
+      summary: Android 客户端更新检查
+      description: |
+        公开接口，无鉴权。使用独立于 Windows 的 server_meta 键；响应形状相同。
+      operationId: getAndroidLatest
+      responses:
+        "200":
+          description: 最新版本信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /client/linux/latest.json:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        description: 生产公网 Device API 网关（精确路由白名单）
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    get:
+      tags:
+        - public
+      summary: Linux 客户端更新检查
+      description: |
+        公开接口，无鉴权。使用独立于 Windows / Android 的 server_meta 键；响应形状相同。
+        Linux claim / release / assignment 使用独立 platform=linux。
+        Linux 的产物签名类型是 `ed25519`（对产物字节的分离签名），与另外两端的
+        Authenticode / apksigner 并列，见 `release.PLATFORM_SIGNATURE_TYPES`。
+      operationId: getLinuxLatest
+      responses:
+        "200":
+          description: 最新版本信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/user:
+    get:
+      tags:
+        - admin
+      summary: 用户列表
+      description: 返回用户列表，deleted 用户不出现在列表；支持 ?username=<精确值> 过滤。
+      operationId: adminListUsers
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: username
+          in: query
+          required: false
+          description: 用户名精确过滤
+          schema:
+            type: string
+            maxLength: 64
+      responses:
+        "200":
+          description: 用户列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - admin
+      summary: 创建用户
+      description: |
+        username 必填，trim 后非空且 <=64；displayName 可缺省（默认等于 username）。
+        重复 username 返回 409 Conflict。
+      operationId: adminCreateUser
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 用户名冲突（Conflict）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/user/{id}:
+    delete:
+      tags:
+        - admin
+      summary: 删除用户（软删除）
+      description: |
+        status=deleted；若存在未使用 active binding link，同步置 revoked。
+        不存在返回 404 NotFound。
+      operationId: adminDeleteUser
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户 ID（usr_...）
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 资源不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/binding:
+    get:
+      tags:
+        - admin
+      summary: 绑定码列表
+      description: |
+        返回绑定码列表；支持 ?userId=<id> 过滤。读取时会把已自然到期的 active
+        记录更新为 expired，因此 status 是请求时刻的实时状态。明文 code 仅在创建
+        响应中出现一次，列表不返回 code。
+      operationId: adminListBindings
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: 按用户 ID 过滤
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 绑定码列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BindingListResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - admin
+      summary: 创建绑定码
+      description: |
+        userId 必须 active；expiresInSeconds 缺省 3600，范围 60-604800。
+        code 由 secrets.token_hex(4) 大写按 4 位分组生成（如 A7K9-M2QF）。
+        明文 code 仅在本次成功响应中返回，后续列表和延期响应不会再次返回。
+      operationId: adminCreateBinding
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BindingCreateRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BindingCreateResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/binding/{id}:
+    delete:
+      tags:
+        - admin
+      summary: 删除绑定码
+      description: |
+        未 claimed 的 active link -> revoked；已 claimed/expired/revoked 重复删除 -> 幂等 200。
+        不存在返回 404 NotFound。
+      operationId: adminDeleteBinding
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 绑定码 ID（lnk_...）
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 删除/撤销成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 资源不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/binding/{id}/extend:
+    post:
+      tags:
+        - admin
+      summary: 延长绑定码有效期（可选便利）
+      description: 仅 active 可延长；返回更新后的 binding，但不返回明文 code。
+      operationId: adminExtendBinding
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 绑定码 ID（lnk_...）
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BindingExtendRequest"
+      responses:
+        "200":
+          description: 延长成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BindingResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 资源不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/device:
+    get:
+      tags:
+        - admin
+      summary: 设备列表
+      description: |
+        返回设备列表；支持 ?userId=<id> 过滤。
+        字段：id,userId,deviceName,platform,clientVersion,status,lastSeenAt,
+        createdAt,updatedAt,xrayClientEmail（不返回 token 任何形式）。
+      operationId: adminListDevices
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: 按用户 ID 过滤
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 设备列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceListResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/device/{id}:
+    delete:
+      tags:
+        - admin
+      summary: 禁用设备
+      description: |
+        device -> status=disabled，并调用 xui.update_client(email, enable=False) 禁用网络侧 client。
+        不存在返回 404；已 disabled 幂等返回 200。
+      operationId: adminDeleteDevice
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 设备 ID（dev_...）
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 禁用成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 资源不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/config:
+    get:
+      tags:
+        - admin
+      summary: 获取最新配置版本
+      description: 返回最新 ConfigVersion：configVersion、config（ServerProfile）、createdAt。
+      operationId: adminGetConfig
+      security:
+        - AdminBearerAuth: []
+      responses:
+        "200":
+          description: 最新配置版本
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConfigResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/config/version:
+    post:
+      tags:
+        - admin
+      summary: 提升配置版本
+      description: |
+        读取当前 XuiAdapter 公共 profile，插入新 config_version（version=旧+1）。
+        V1 不提供任意修改 profile 字段；profile 永远来自 3X-UI inbound 真实值。
+      operationId: adminBumpConfigVersion
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigVersionCreateRequest"
+      responses:
+        "200":
+          description: 新配置版本
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConfigResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/release:
+    get:
+      tags:
+        - admin
+      summary: 列出已登记的 release
+      operationId: adminListReleases
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: query
+          name: platform
+          schema:
+            type: string
+            enum: [windows, android, linux]
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, published, revoked]
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [releases]
+                properties:
+                  releases:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Release"
+    post:
+      tags:
+        - admin
+      summary: 登记一个已签名的 release
+      description: |
+        服务端**只验签不签名**：VPS 上没有私钥，签名在发布流程里离线完成。
+        因此即使 Admin Token 完全泄漏，攻击者也只能登记一个已经带着可信密钥
+        签名的 manifest —— 这正是「Control Plane 不具备下发任意可执行文件」
+        这条验收标准成立的原因。
+
+        未配置 `MYPROXY_RELEASE_SIGNING_KEYS` 时本接口一律拒绝（fail closed）。
+        同一 (platform, version) 不可重复登记：同一版本号指向不同字节是客户端
+        唯一无法察觉的攻击面。失败一律返回通用的 ManifestRejected，调用方
+        **不得匹配错误消息**。
+      operationId: adminRegisterRelease
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterReleaseRequest"
+      responses:
+        "200":
+          description: 登记成功（状态为 draft）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Release"
+        "400":
+          description: manifest 被拒绝（ManifestRejected / BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 该 platform+version 已登记（Conflict）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/release/{releaseId}/publish:
+    post:
+      tags:
+        - admin
+      summary: 发布 release
+      description: 只有 published 的 release 才能被指派与下发。
+      operationId: adminPublishRelease
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Release"
+        "404":
+          description: release 不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 已撤销的 release 不能重新发布（Conflict）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/release/{releaseId}/revoke:
+    post:
+      tags:
+        - admin
+      summary: 撤销 release
+      description: |
+        撤销后所有指向它的指派会向下一层回落，因此这是一次性的全量回滚开关。
+      operationId: adminRevokeRelease
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 已撤销
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Release"
+        "404":
+          description: release 不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/assignment:
+    get:
+      tags:
+        - admin
+      summary: 列出 release 指派
+      operationId: adminListAssignments
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [device, user, platform]
+        - in: query
+          name: targetId
+          schema:
+            type: string
+        - in: query
+          name: platform
+          schema:
+            type: string
+            enum: [windows, android, linux]
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assignments]
+                properties:
+                  assignments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Assignment"
+    post:
+      tags:
+        - admin
+      summary: 指派 release / feature flags
+      description: |
+        按 device / user / platform 三种 scope 指派。指派只表达
+        `Device A → Release X`，**不能携带 URL、脚本或命令**。
+
+        releaseId 省略时该条指派只携带 feature flags，不改变版本；
+        指派的 release 必须是同平台且已 published。
+      operationId: adminSetAssignment
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAssignmentRequest"
+      responses:
+        "200":
+          description: 指派成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "400":
+          description: 参数非法（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 目标或 release 不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: release 未发布（Conflict）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/assignment/{assignmentId}:
+    delete:
+      tags:
+        - admin
+      summary: 删除一条指派
+      operationId: adminDeleteAssignment
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: assignmentId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 已删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "404":
+          description: 指派不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/device/{deviceId}/release:
+    get:
+      tags:
+        - admin
+      summary: 查看某设备当前生效的 release 与来源
+      description: 回答「这台设备现在到底跑哪个版本、是谁指派的」，无需手工复算解析规则。
+      operationId: adminDeviceEffectiveRelease
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectiveRelease"
+        "404":
+          description: 设备不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/release-audit:
+    get:
+      tags:
+        - admin
+      summary: 查询 Update Plane 审计流水
+      operationId: adminReleaseAudit
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: query
+          name: targetId
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReleaseAuditEntry"
+  /api/admin/usage:
+    get:
+      tags:
+        - admin
+      summary: 查询聚合用量与时间趋势
+      description: |
+        按设备或用户查询。`granularity` 为 `hour`（默认，窗口默认最近 24 小时）
+        或 `day`（默认最近 30 天）。只存小时桶，日粒度由小时桶求和得到。
+
+        **空桶会照常返回**：把没有流量的桶悄悄丢掉，会让「那时没用」和
+        「那时没有数据」读起来一模一样，而这是两个不同的答案。
+
+        调用会顺带触发一次受节流的 x-ui 计数器扫描，因此返回的数字是新鲜的。
+      operationId: adminUsage
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: query
+          name: deviceId
+          schema:
+            type: string
+        - in: query
+          name: userId
+          schema:
+            type: string
+        - in: query
+          name: start
+          schema:
+            type: string
+            example: "2026-09-20T00:00:00Z"
+        - in: query
+          name: end
+          schema:
+            type: string
+        - in: query
+          name: granularity
+          schema:
+            type: string
+            enum: [hour, day]
+            default: hour
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageResponse"
+        "400":
+          description: 时间窗非法或过宽（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: deviceId 不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/usage/refresh:
+    post:
+      tags:
+        - admin
+      summary: 强制刷新 x-ui 计数器
+      description: 绕过节流立即扫描一次。本进程没有调度器，扫描平时由心跳与查询顺带触发。
+      operationId: adminRefreshUsage
+      security:
+        - AdminBearerAuth: []
+      responses:
+        "200":
+          description: 刷新完成
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, devicesUpdated, serverTime]
+                properties:
+                  ok:
+                    type: boolean
+                  devicesUpdated:
+                    type: integer
+                  serverTime:
+                    type: string
+  /api/admin/activity:
+    get:
+      tags:
+        - admin
+      summary: 列出所有设备的活动状态与粗略位置
+      operationId: adminListActivity
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: query
+          name: userId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeviceActivity"
+  /api/admin/device/{deviceId}/activity:
+    get:
+      tags:
+        - admin
+      summary: 查看单个设备的活动状态与粗略位置
+      operationId: adminDeviceActivity
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceActivity"
+        "404":
+          description: 设备不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/device/{deviceId}/geo:
+    post:
+      tags:
+        - admin
+      summary: 写入管理员提供的粗略位置
+      description: |
+        服务端**刻意不做自动地理定位**：它没有 GeoIP 数据库，也不能把用户地址
+        送去第三方定位服务换取一个——那会泄漏本平面其余部分小心不去保留的数据。
+        所以 country / region / city / asn / isp 由管理员带外提供并原样存储。
+
+        服务端自己从请求来源得到的是出口地址与由它推导的网段；
+        country 一类的行政区划信息**不会**由地址推算出来，只能管理员填。
+        传空字符串表示清除该字段。
+      operationId: adminSetDeviceGeo
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceGeo"
+      responses:
+        "200":
+          description: 已写入
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceActivity"
+        "400":
+          description: 字段不在粗略集合内（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 设备不存在（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/latest:
+    get:
+      tags:
+        - admin
+      summary: 获取当前 Windows 客户端最新版本信息
+      description: 返回 server_meta 中保存的 latest 对象。
+      operationId: adminGetLatest
+      security:
+        - AdminBearerAuth: []
+      responses:
+        "200":
+          description: 当前 latest 对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - admin
+      summary: 设置 Windows 客户端最新版本信息
+      description: |
+        version 必须可被 semver 语义解析（^\d+\.\d+\.\d+$）。
+        写入 server_meta；返回当前 latest 对象。
+      operationId: adminSetLatest
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LatestSetRequest"
+      responses:
+        "200":
+          description: 设置后的 latest 对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/latest/android:
+    get:
+      tags:
+        - admin
+      summary: 获取当前 Android 客户端最新版本信息
+      operationId: adminGetAndroidLatest
+      security:
+        - AdminBearerAuth: []
+      responses:
+        "200":
+          description: 当前 Android latest 对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - admin
+      summary: 设置 Android 客户端最新版本信息
+      operationId: adminSetAndroidLatest
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LatestSetRequest"
+      responses:
+        "200":
+          description: 设置后的 Android latest 对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/latest/linux:
+    get:
+      tags:
+        - admin
+      summary: 获取当前 Linux 客户端最新版本信息
+      operationId: adminGetLinuxLatest
+      security:
+        - AdminBearerAuth: []
+      responses:
+        "200":
+          description: 当前 Linux latest 对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - admin
+      summary: 设置 Linux 客户端最新版本信息
+      operationId: adminSetLinuxLatest
+      security:
+        - AdminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LatestSetRequest"
+      responses:
+        "200":
+          description: 设置后的 Linux latest 对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestResponse"
+        "400":
+          description: 请求参数错误（BadRequest）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务器内部错误（ServerError）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  headers:
+    RequestId:
+      description: 请求关联 ID；公网 nginx 覆盖客户端提供值，私有入口接受合法值或生成新值。
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$"
+  securitySchemes:
+    AdminBearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        管理接口鉴权：Authorization: Bearer <MYPROXY_ADMIN_TOKEN>。
+        Token 来自 /etc/myproxy-api/admin.env。
+    DeviceBearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        设备鉴权：Authorization: Bearer <deviceToken>。
+        服务端只存 SHA-256 哈希，不存明文；设备 token 仅在 claim 成功或该 claim
+        的有界幂等重放响应中出现。
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: |
+            安全文案错误码：PairingInvalid / PairingExpired / TokenInvalid /
+            DeviceNotFound / AdminUnauthorized / RateLimited / BadRequest /
+            NotFound / Conflict / ManifestRejected / ServerError。
+            ManifestRejected 只出现在 Admin 登记 release 时，文案刻意不说是哪一项
+            校验失败；调用方不得匹配文案。
+          enum:
+            - PairingInvalid
+            - PairingExpired
+            - TokenInvalid
+            - DeviceNotFound
+            - AdminUnauthorized
+            - RateLimited
+            - BadRequest
+            - NotFound
+            - Conflict
+            - ManifestRejected
+            - ServerError
+        message:
+          type: string
+          description: 与 code 对应的安全文案。
+    HealthResponse:
+      type: object
+      required:
+        - ok
+        - service
+        - version
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+          example: myproxy-api
+        version:
+          type: string
+          example: "0.1.0"
+    ReadyResponse:
+      type: object
+      required:
+        - ok
+        - service
+        - version
+        - checks
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+          example: myproxy-api
+        version:
+          type: string
+          example: "0.1.0"
+        checks:
+          type: object
+          required:
+            - db
+            - xui
+          additionalProperties: false
+          properties:
+            db:
+              type: boolean
+            xui:
+              type: boolean
+    ClaimRequest:
+      type: object
+      required:
+        - pairingCode
+        - deviceName
+        - platform
+        - clientVersion
+      properties:
+        pairingCode:
+          type: string
+          maxLength: 32
+          description: 形如 A7K9-M2QF；服务端会规范化。
+        deviceName:
+          type: string
+          maxLength: 128
+          description: 超过 128 字符服务端截断。
+        platform:
+          type: string
+          maxLength: 32
+          example: windows
+        clientVersion:
+          type: string
+          maxLength: 32
+          example: "0.1.0"
+        clientInstanceId:
+          type: string
+          minLength: 16
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]{16,128}$'
+          example: b8650c02-f6d3-4f4b-b823-4920217bf355
+          description: |
+            可选的安装级稳定高熵标识（推荐 UUID v4）。服务端只保存域分隔后的
+            SHA-256 哈希；同一 claim 的安全重试必须发送完全相同的值。
+    ServerProfile:
+      type: object
+      description: |
+        下发给客户端的配置对象。公共字段（除 uuid）来自
+        XuiAdapter.public_profile()；uuid 为设备专属 xray client UUID。
+      required:
+        - server
+        - port
+        - uuid
+        - security
+        - publicKey
+        - shortId
+        - sni
+        - fingerprint
+        - flow
+        - spiderX
+      properties:
+        server:
+          type: string
+          description: 公网服务器地址。
+          example: 203.0.113.10
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          example: 443
+        uuid:
+          type: string
+          description: 设备专属 xray client UUID；admin 查询最新配置时可能为公共模板（uuid 为空字符串）。
+        security:
+          type: string
+          example: reality
+        publicKey:
+          type: string
+          description: REALITY 公钥（私钥严禁下发）。
+        shortId:
+          type: string
+          description: realitySettings.shortIds 中已启用值。
+        sni:
+          type: string
+          example: example.com
+        fingerprint:
+          type: string
+          example: chrome
+        flow:
+          type: string
+          example: xtls-rprx-vision
+        spiderX:
+          type: string
+          example: /
+    ClaimResponse:
+      type: object
+      required:
+        - deviceId
+        - deviceToken
+        - configVersion
+        - config
+      properties:
+        deviceId:
+          type: string
+          example: dev_...
+        deviceToken:
+          type: string
+          description: 仅在 claim 成功/有界幂等重放响应中出现；服务端只存哈希。
+          example: tok_...
+        configVersion:
+          type: integer
+          minimum: 1
+          example: 1
+        config:
+          $ref: "#/components/schemas/ServerProfile"
+    DeviceConfigResponse:
+      type: object
+      required:
+        - configVersion
+        - config
+      properties:
+        configVersion:
+          type: integer
+          minimum: 1
+          example: 1
+        config:
+          $ref: "#/components/schemas/ServerProfile"
+    DeviceUpdateResponse:
+      type: object
+      required:
+        - update
+        - featureFlags
+        - serverTime
+      properties:
+        update:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssignedRelease"
+        featureFlags:
+          $ref: "#/components/schemas/FeatureFlags"
+        serverTime:
+          type: string
+          example: "2026-09-19T01:00:00Z"
+    AssignedRelease:
+      type: object
+      required:
+        - releaseId
+        - version
+        - channel
+        - mandatory
+        - source
+        - manifest
+        - signature
+        - signingKeyId
+      properties:
+        releaseId:
+          type: string
+          example: rel_9f0c1d2e3a4b5c6d7e8f9a0b
+        version:
+          type: string
+          example: 1.2.3
+        channel:
+          type: string
+          enum: [stable, beta]
+        mandatory:
+          type: boolean
+        source:
+          type: string
+          enum: [device, user, platform]
+          description: 命中的指派层级。
+        manifest:
+          type: string
+          format: byte
+          description: |
+            manifest 的**原始 UTF-8 字节**的 base64。客户端必须按收到的字节验签，
+            不得先解析再重新序列化：三端序列化器在键序、转义与空白上的任何差异
+            都会让同一份 manifest 在一端验签通过、在另一端失败。
+        signature:
+          type: string
+          format: byte
+          description: 64 字节 Ed25519 签名的 base64，覆盖域前缀 + manifest 原始字节。
+        signingKeyId:
+          type: string
+          example: rel-2026a
+    FeatureFlags:
+      type: object
+      description: |
+        平面化的开关表，值只允许 string / number / boolean / null，且最多 64 项。
+        刻意不允许嵌套对象：嵌套正是把结构化指令夹带进「只该传开关」的通道的形状。
+      additionalProperties:
+        nullable: true
+        oneOf:
+          - type: string
+            maxLength: 128
+          - type: number
+          - type: boolean
+    UpdateReportRequest:
+      type: object
+      required:
+        - releaseId
+        - status
+      properties:
+        releaseId:
+          type: string
+        status:
+          type: string
+          enum: [installed, failed, rolledback]
+        detail:
+          type: string
+          maxLength: 256
+          description: 可选的失败原因，会被截断后写入审计。
+    RegisterReleaseRequest:
+      type: object
+      required:
+        - manifest
+        - signature
+        - signingKeyId
+      properties:
+        manifest:
+          type: string
+          format: byte
+          description: manifest 原始字节的 base64，最大 8192 字节。
+        signature:
+          type: string
+          format: byte
+        signingKeyId:
+          type: string
+        note:
+          type: string
+          maxLength: 256
+    Release:
+      type: object
+      required:
+        - id
+        - platform
+        - version
+        - channel
+        - status
+        - mandatory
+        - artifactUrl
+        - artifactSha256
+      properties:
+        id:
+          type: string
+        platform:
+          type: string
+          enum: [windows, android, linux]
+        version:
+          type: string
+        channel:
+          type: string
+          enum: [stable, beta]
+        status:
+          type: string
+          enum: [draft, published, revoked]
+        mandatory:
+          type: boolean
+        artifactUrl:
+          type: string
+          format: uri
+        artifactSha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        artifactSize:
+          type: integer
+        platformSignatureType:
+          type: string
+          enum: [authenticode, apksigner, ed25519]
+        platformSignatureSubjectSha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: Windows/Android 为平台签名证书 SHA-256；Linux 为内置产物公钥 SHA-256。
+        minimumVersion:
+          type: string
+        signingKeyId:
+          type: string
+        note:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    SetAssignmentRequest:
+      type: object
+      required:
+        - scope
+        - platform
+      properties:
+        scope:
+          type: string
+          enum: [device, user, platform]
+        targetId:
+          type: string
+          description: scope=platform 时忽略。
+        platform:
+          type: string
+          enum: [windows, android, linux]
+        releaseId:
+          type: string
+          description: 省略则该指派只携带 feature flags。
+        featureFlags:
+          $ref: "#/components/schemas/FeatureFlags"
+        note:
+          type: string
+          maxLength: 256
+    Assignment:
+      type: object
+      required:
+        - id
+        - scope
+        - targetId
+        - platform
+        - releaseId
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+          enum: [device, user, platform]
+        targetId:
+          type: string
+        platform:
+          type: string
+          enum: [windows, android, linux]
+        releaseId:
+          type: string
+        featureFlags:
+          type: string
+          description: 以 JSON 字符串原样返回，便于与审计流水逐字节比对。
+        note:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    EffectiveRelease:
+      type: object
+      required:
+        - deviceId
+        - platform
+        - release
+        - source
+        - featureFlags
+      properties:
+        deviceId:
+          type: string
+        platform:
+          type: string
+        installedVersion:
+          type: string
+          description: 设备最近一次回报 installed 的版本。
+        release:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Release"
+        source:
+          type: string
+          enum: ["", device, user, platform]
+        featureFlags:
+          $ref: "#/components/schemas/FeatureFlags"
+    ReleaseAuditEntry:
+      type: object
+      required:
+        - at
+        - action
+      properties:
+        at:
+          type: string
+        action:
+          type: string
+          example: assignment_set
+        scope:
+          type: string
+        targetId:
+          type: string
+        platform:
+          type: string
+        releaseId:
+          type: string
+        previousReleaseId:
+          type: string
+        detail:
+          type: string
+    UsageReportRequest:
+      type: object
+      properties:
+        bucketStart:
+          type: string
+          description: 可省略，默认当前小时；只接受当前或上一个小时。
+        categories:
+          $ref: "#/components/schemas/ServiceCategories"
+    ServiceCategories:
+      type: object
+      description: |
+        封闭词表，键只能是 video / social / messaging / web / download / other，
+        值为该桶内的字节数。词表外的键一律拒绝。
+      additionalProperties: false
+      properties:
+        video:
+          type: integer
+          minimum: 0
+        social:
+          type: integer
+          minimum: 0
+        messaging:
+          type: integer
+          minimum: 0
+        web:
+          type: integer
+          minimum: 0
+        download:
+          type: integer
+          minimum: 0
+        other:
+          type: integer
+          minimum: 0
+    UsageResponse:
+      type: object
+      required:
+        - granularity
+        - rangeStart
+        - rangeEnd
+        - series
+        - categories
+        - totals
+      properties:
+        deviceId:
+          type: string
+        userId:
+          type: string
+        granularity:
+          type: string
+          enum: [hour, day]
+        rangeStart:
+          type: string
+        rangeEnd:
+          type: string
+        retentionDays:
+          type: integer
+          description: 小时桶的保留天数，超期在写入时裁剪（本进程没有调度器）。
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/UsageBucket"
+        categories:
+          type: array
+          items:
+            type: object
+            required: [category, totalBytes]
+            properties:
+              category:
+                type: string
+                enum: [video, social, messaging, web, download, other]
+              totalBytes:
+                type: integer
+        totals:
+          type: object
+          properties:
+            uplinkBytes:
+              type: integer
+            downlinkBytes:
+              type: integer
+            totalBytes:
+              type: integer
+    UsageBucket:
+      type: object
+      required:
+        - bucketStart
+        - uplinkBytes
+        - downlinkBytes
+        - totalBytes
+      properties:
+        bucketStart:
+          type: string
+        uplinkBytes:
+          type: integer
+        downlinkBytes:
+          type: integer
+        totalBytes:
+          type: integer
+    DeviceActivity:
+      type: object
+      required:
+        - deviceId
+        - state
+        - location
+      properties:
+        deviceId:
+          type: string
+        userId:
+          type: string
+        deviceName:
+          type: string
+        platform:
+          type: string
+        status:
+          type: string
+        lastSeenAt:
+          type: string
+          nullable: true
+        state:
+          type: string
+          enum: [connected, idle, offline]
+          description: |
+            由 lastSeenAt 推导而非存储：断电消失的设备没机会告诉任何人它走了，
+            存一个标志位会让它永远宣称自己在线。
+        location:
+          $ref: "#/components/schemas/CoarseLocation"
+        recentAddresses:
+          type: array
+          description: |
+            该设备最近使用过的若干个**不同**出口地址，按末见时间倒序。
+            只出现在单设备详情里：列表视图要为此对每台设备多查一次，
+            而「这个账号是不是在到处跑」是针对某一台设备问的问题。
+          items:
+            $ref: "#/components/schemas/DeviceAddress"
+        addressHistoryLimit:
+          type: integer
+          description: 每台设备最多保留的不同地址数（MYPROXY_DEVICE_ADDRESS_HISTORY）。
+          example: 10
+    DeviceAddress:
+      type: object
+      properties:
+        address:
+          type: string
+          example: 203.0.113.47
+        firstSeenAt:
+          type: string
+        lastSeenAt:
+          type: string
+    CoarseLocation:
+      type: object
+      properties:
+        ipAddress:
+          type: string
+          description: |
+            设备当前的完整出口地址，服务端所见。请求未经受信反代转发时为空串
+            （此时不会覆盖已存地址）。**仅 Admin API 返回**——Device API 既不
+            接受也不回读地址。一份 Control Plane 数据库的副本因此**就是**
+            一份「谁从哪里连过」的记录，按敏感数据对待。
+          example: 203.0.113.47
+        ipPrefix:
+          type: string
+          description: |
+            由 ipAddress 推导的网段（IPv4 /24、IPv6 /48），供粗略位置视图分组。
+            它不再是隐私措施——完整地址就存在旁边。
+          example: 203.0.113.0/24
+        country:
+          type: string
+        region:
+          type: string
+        city:
+          type: string
+        asn:
+          type: string
+        isp:
+          type: string
+    DeviceGeo:
+      type: object
+      description: 管理员带外提供的粗略位置；传空字符串表示清除。
+      additionalProperties: false
+      properties:
+        country:
+          type: string
+          maxLength: 64
+        region:
+          type: string
+          maxLength: 64
+        city:
+          type: string
+          maxLength: 64
+        asn:
+          type: string
+          maxLength: 64
+        isp:
+          type: string
+          maxLength: 64
+    HeartbeatResponse:
+      type: object
+      required:
+        - ok
+        - configVersion
+        - serverTime
+      properties:
+        ok:
+          type: boolean
+        configVersion:
+          type: integer
+          minimum: 1
+          example: 1
+        serverTime:
+          type: string
+          description: UTC 秒级时间，格式 YYYY-MM-DDTHH:MM:SSZ。
+          example: "2026-08-16T01:00:00Z"
+        release:
+          nullable: true
+          description: |
+            本设备当前生效的 release 标识。每次心跳都重算，因此指派变更最多在
+            一个心跳周期内到达在线客户端，无需客户端再轮询第二个接口。
+            这里**只有身份**，已签名的 manifest 仍须从 /api/device/update 取并验签。
+          allOf:
+            - $ref: "#/components/schemas/HeartbeatRelease"
+        featureFlags:
+          $ref: "#/components/schemas/FeatureFlags"
+    HeartbeatRelease:
+      type: object
+      required:
+        - releaseId
+        - version
+        - channel
+        - mandatory
+        - source
+      properties:
+        releaseId:
+          type: string
+        version:
+          type: string
+        channel:
+          type: string
+          enum: [stable, beta]
+        mandatory:
+          type: boolean
+        source:
+          type: string
+          enum: [device, user, platform]
+    LatestResponse:
+      type: object
+      description: |
+        当存在 platform 层指派且该 release 已发布时，本响应额外带上 releaseId、
+        manifest、signature、signingKeyId，并以该 release 的值覆盖 version /
+        downloadUrl / sha256 / mandatory，确保旧客户端读取的这四个字段与
+        签名清单一致。
+
+        本路由不需要设备令牌，这是「更新检查不能完全依赖 Control Plane 在线」的
+        落点：拿不到令牌的客户端仍能取到并验证一份签名 manifest。
+        **按设备的指派永远不会出现在这里** —— 那等于把某台设备的指派泄漏给任何人。
+      required:
+        - version
+        - downloadUrl
+        - sha256
+        - mandatory
+      properties:
+        releaseId:
+          type: string
+          description: 仅当存在已发布的 platform 层指派时出现。
+        manifest:
+          type: string
+          format: byte
+          description: 仅当存在已发布的 platform 层指派时出现。
+        signature:
+          type: string
+          format: byte
+        signingKeyId:
+          type: string
+        version:
+          type: string
+          # 与 release.py 的 _VERSION_RE 一致：有 platform 层指派时取自该 release，
+          # 可以带预发布 / 构建后缀；旧形状仍是 x.y.z。
+          pattern: '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+          example: "0.1.0"
+        downloadUrl:
+          type: string
+        sha256:
+          type: string
+          pattern: '^(?:[0-9a-f]{64})?$'
+          description: 64 位小写十六进制；V1 可为空字符串。
+        mandatory:
+          type: boolean
+    UserCreateRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          maxLength: 64
+          description: 必填，trim 后非空且 <=64。
+        displayName:
+          type: string
+          maxLength: 64
+          description: 可缺省，默认等于 username。
+    UserResponse:
+      type: object
+      required:
+        - id
+        - username
+        - displayName
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          example: usr_...
+        username:
+          type: string
+        displayName:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - deleted
+        createdAt:
+          type: string
+          example: "2026-08-16T01:00:00Z"
+    UserListResponse:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+    BindingCreateRequest:
+      type: object
+      required:
+        - userId
+        - deviceTemplate
+      properties:
+        userId:
+          type: string
+          description: 必须 active 用户。
+          example: usr_...
+        deviceTemplate:
+          type: string
+          maxLength: 32
+          example: windows
+        expiresInSeconds:
+          type: integer
+          minimum: 60
+          maximum: 604800
+          default: 3600
+          example: 3600
+    BindingResponse:
+      type: object
+      required:
+        - id
+        - userId
+        - deviceTemplate
+        - status
+        - expiresAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          example: lnk_...
+        userId:
+          type: string
+          example: usr_...
+        deviceTemplate:
+          type: string
+          example: windows
+        status:
+          type: string
+          enum:
+            - active
+            - claimed
+            - expired
+            - revoked
+        expiresAt:
+          type: string
+          example: "2026-08-16T01:00:00Z"
+        createdAt:
+          type: string
+          example: "2026-08-16T00:00:00Z"
+    BindingCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/BindingResponse"
+        - type: object
+          required:
+            - code
+          properties:
+            code:
+              type: string
+              description: 仅创建成功响应返回一次；列表与延期响应不返回。
+              example: A7K9-M2QF
+    BindingListResponse:
+      type: object
+      required:
+        - bindings
+      properties:
+        bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BindingResponse"
+    BindingExtendRequest:
+      type: object
+      required:
+        - extendsSeconds
+      properties:
+        extendsSeconds:
+          type: integer
+          minimum: 1
+          example: 3600
+    DeviceResponse:
+      type: object
+      required:
+        - id
+        - userId
+        - deviceName
+        - platform
+        - clientVersion
+        - status
+        - createdAt
+        - updatedAt
+        - xrayClientEmail
+      properties:
+        id:
+          type: string
+          example: dev_...
+        userId:
+          type: string
+          example: usr_...
+        deviceName:
+          type: string
+        platform:
+          type: string
+        clientVersion:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+        lastSeenAt:
+          type: string
+          nullable: true
+          example: "2026-08-16T01:00:00Z"
+        createdAt:
+          type: string
+          example: "2026-08-16T00:00:00Z"
+        updatedAt:
+          type: string
+          example: "2026-08-16T00:00:00Z"
+        xrayClientEmail:
+          type: string
+          description: 不返回 token 任何形式。
+    DeviceListResponse:
+      type: object
+      required:
+        - devices
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceResponse"
+    AdminConfigResponse:
+      type: object
+      required:
+        - configVersion
+        - config
+        - createdAt
+      properties:
+        configVersion:
+          type: integer
+          minimum: 1
+          example: 1
+        config:
+          $ref: "#/components/schemas/ServerProfile"
+        createdAt:
+          type: string
+          example: "2026-08-16T00:00:00Z"
+    ConfigVersionCreateRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 256
+          example: rotate
+    LatestSetRequest:
+      type: object
+      required:
+        - version
+        - downloadUrl
+        - sha256
+        - mandatory
+      properties:
+        version:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          example: "0.2.0"
+        downloadUrl:
+          type: string
+        sha256:
+          type: string
+          pattern: '^(?:[0-9a-f]{64})?$'
+          description: 非空时必须为 64 位小写十六进制；V1 可为空字符串。
+        mandatory:
+          type: boolean
+    OkResponse:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          example: true

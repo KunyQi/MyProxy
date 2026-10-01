@@ -1,0 +1,132 @@
+<UserControl x:Class="MyProxy.Views.MainView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:MyProxy.Controls"
+             Height="720"
+             UseLayoutRounding="True"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
+             Background="{DynamicResource Brush.Background}">
+
+    <Grid Style="{StaticResource PageRootStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="MyProxy"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   Style="{StaticResource OrbPageTitleStyle}" />
+
+        <!-- 能量球：主操作与状态指示合一，严格居中在页面中轴上。
+             它同时承担旧版「主按钮」的全部命令绑定，PrimaryCommand 未变。 -->
+        <Button Grid.Row="2"
+                Style="{StaticResource OrbButtonStyle}"
+                Command="{Binding PrimaryCommand}"
+                IsDefault="True"
+                AutomationProperties.Name="{Binding ButtonText}" />
+
+
+        <StackPanel Grid.Row="4" TargetUpdated="OnStatusTargetUpdated">
+            <!-- 只有文字，没有前置状态点：点会让「点+文字」这个整体居中，于是文字本身
+                 被推离中轴 8.5px。状态已由能量球（颜色 + 呼吸）表达，点是冗余的。 -->
+            <Grid Style="{StaticResource ReservedStatusLineStyle}">
+                <TextBlock Text="{Binding StatusText, NotifyOnTargetUpdated=True}"
+                           HorizontalAlignment="Center"
+                           Style="{StaticResource OrbStatusTextStyle}" />
+            </Grid>
+            <Grid Style="{StaticResource ReservedLineStyle}"
+                  Margin="{StaticResource Thickness.TopXS}">
+                <TextBlock Text="{Binding StatusSubText, NotifyOnTargetUpdated=True}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Visibility="{Binding StatusSubTextVisibility}"
+                           Style="{StaticResource StatusSubTextStyle}" />
+            </Grid>
+        </StackPanel>
+
+        <!-- 流量 band：标签 18 + Space.XS 4 + 对称面积图 44 = 66。
+             断开时整段 Hidden（占位保留）——把上一分钟的波形留在屏幕上会被读成「还在跑流量」。 -->
+        <StackPanel Grid.Row="6" Visibility="{Binding TrafficVisibility}">
+            <Grid Height="{StaticResource Size.TrafficLabel}">
+                <!-- 箭头是 Path 不是字符：↑↓ 会走字体回退，和「已连接」当初那三个字
+                     落到不同 CJK 字体是同一类问题，而且字形的视重完全不受我们控制。 -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Path Data="{StaticResource Geometry.ArrowUp}"
+                          Style="{StaticResource TrafficArrowStyle}" />
+                    <TextBlock Text="{Binding UplinkText}"
+                               Margin="{StaticResource Thickness.LeftXS}"
+                               Style="{StaticResource TrafficLabelTextStyle}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Path Data="{StaticResource Geometry.ArrowDown}"
+                          Style="{StaticResource TrafficArrowStyle}" />
+                    <TextBlock Text="{Binding DownlinkText}"
+                               Margin="{StaticResource Thickness.LeftXS}"
+                               Style="{StaticResource TrafficLabelTextStyle}" />
+                </StackPanel>
+            </Grid>
+            <controls:TrafficSparkline Height="{StaticResource Size.TrafficChart}"
+                                       Margin="{StaticResource Thickness.TopXS}"
+                                       Samples="{Binding TrafficSamples}"
+                                       UplinkBrush="{StaticResource Brush.AccentText}"
+                                       DownlinkBrush="{StaticResource Brush.SuccessText}"
+                                       BaselineBrush="{StaticResource Brush.Border}" />
+        </StackPanel>
+
+        <ContentControl Grid.Row="8" Style="{StaticResource ModeSwitchStyle}" />
+
+        <!-- 自检 band：按钮 40 + Space.XS 4 + 结果行 20 = 64。
+             结果行是四者共用的预留槽，优先级由 ViewModel 的可见性互斥保证：
+             切换中 > 切换失败 > 自检结论 > 自动延迟。 -->
+        <StackPanel Grid.Row="10">
+            <Button Content="{Binding CheckButtonText}"
+                    Command="{Binding CheckCommand}"
+                    Visibility="{Binding CheckButtonVisibility}"
+                    Style="{StaticResource CheckButtonStyle}" />
+            <Grid Style="{StaticResource ReservedLineStyle}"
+                  Margin="{StaticResource Thickness.TopXS}">
+                <TextBlock Text="正在切换…"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Visibility="{Binding IsSwitchingTextVisible}"
+                           Style="{StaticResource SecondaryTextStyle}" />
+                <TextBlock Text="{Binding SwitchErrorMessage}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Visibility="{Binding SwitchErrorVisibility}"
+                           Style="{StaticResource InlineErrorTextStyle}" />
+                <TextBlock Text="{Binding CheckResultText}"
+                           Visibility="{Binding CheckResultVisibility}"
+                           Style="{StaticResource CheckResultTextStyle}" />
+                <TextBlock Text="{Binding LatencyText}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Visibility="{Binding LatencyTextVisibility}"
+                           Style="{StaticResource SecondaryTextStyle}" />
+            </Grid>
+        </StackPanel>
+
+        <Button Grid.Row="12"
+                Content="设置"
+                Command="{Binding SettingsCommand}"
+                Style="{StaticResource TextLinkButtonStyle}" />
+    </Grid>
+</UserControl>

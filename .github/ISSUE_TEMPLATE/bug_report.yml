@@ -1,0 +1,52 @@
+name: 故障报告
+description: 提供可复现的行为与环境信息
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "安全漏洞请按 SECURITY.md 私下报告。不要提交真实配对码、令牌、私钥、服务器地址或未脱敏日志。"
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 受影响部分
+      options:
+        - Windows
+        - Android
+        - Linux CLI / daemon
+        - Linux GUI
+        - Server / API
+        - 构建 / 打包
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交
+      description: 填写具体版本与操作系统版本；Android 请注明机型，Linux GUI 请注明桌面环境。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 最小复现步骤
+      description: 使用示例账号和脱敏配置，描述从启动到故障的步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 预期与实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏日志或其他证据
+      description: 保留错误类型与时间顺序，替换所有真实身份、地址和凭据。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已检查公开内容不含凭据、私钥或个人数据。
+          required: true

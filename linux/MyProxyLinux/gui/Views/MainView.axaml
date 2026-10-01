@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:MyProxy.Controls"
+             x:Class="MyProxy.Gui.Views.MainView"
+             Height="720"
+             UseLayoutRounding="True"
+             Background="{DynamicResource Brush.Background}">
+
+    <Grid Theme="{DynamicResource PageRootStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="MyProxy"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   Theme="{DynamicResource OrbPageTitleStyle}" />
+
+        <!-- 能量球：主操作与状态指示合一，严格居中在页面中轴上。
+             它同时承担旧版「主按钮」的全部命令绑定，PrimaryCommand 未变。
+             x:Name 只服务 MainView.axaml.cs 的状态类接线（Windows 端那部分由
+             ControlTemplate.Triggers + DataTrigger 表达，Avalonia 没有等价物）。 -->
+        <Button Grid.Row="2"
+                x:Name="OrbButton"
+                Theme="{DynamicResource OrbButtonStyle}"
+                Command="{Binding PrimaryCommand}"
+                IsDefault="True"
+                AutomationProperties.Name="{Binding ButtonText}" />
+
+
+        <StackPanel Grid.Row="4" x:Name="StatusBand">
+            <!-- 只有文字，没有前置状态点：点会让「点+文字」这个整体居中，于是文字本身
+                 被推离中轴 8.5px。状态已由能量球（颜色 + 呼吸）表达，点是冗余的。 -->
+            <Grid Theme="{DynamicResource ReservedStatusLineStyle}">
+                <TextBlock Text="{Binding StatusText}"
+                           HorizontalAlignment="Center"
+                           Theme="{DynamicResource OrbStatusTextStyle}" />
+            </Grid>
+            <Grid Theme="{DynamicResource ReservedLineStyle}"
+                  Margin="{DynamicResource Thickness.TopXS}">
+                <TextBlock Text="{Binding StatusSubText}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding StatusSubTextVisibility}"
+                           Theme="{DynamicResource StatusSubTextStyle}" />
+            </Grid>
+        </StackPanel>
+
+
+        <StackPanel Grid.Row="6"
+                    Theme="{DynamicResource TrafficBandStyle}"
+                    Opacity="{Binding TrafficOpacity}"
+                    IsHitTestVisible="{Binding TrafficVisibility}">
+            <Grid Height="{DynamicResource Size.TrafficLabel}">
+                <!-- 箭头是 Path 不是字符：↑↓ 会走字体回退，和「已连接」当初那三个字
+                     落到不同 CJK 字体是同一类问题，而且字形的视重完全不受我们控制。 -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Path Data="{DynamicResource Geometry.ArrowUp}"
+                          Theme="{DynamicResource TrafficArrowStyle}" />
+                    <TextBlock Text="{Binding UplinkText}"
+                               Margin="{DynamicResource Thickness.LeftXS}"
+                               Theme="{DynamicResource TrafficLabelTextStyle}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Path Data="{DynamicResource Geometry.ArrowDown}"
+                          Theme="{DynamicResource TrafficArrowStyle}" />
+                    <TextBlock Text="{Binding DownlinkText}"
+                               Margin="{DynamicResource Thickness.LeftXS}"
+                               Theme="{DynamicResource TrafficLabelTextStyle}" />
+                </StackPanel>
+            </Grid>
+            <controls:TrafficSparkline Height="{DynamicResource Size.TrafficChart}"
+                                       Margin="{DynamicResource Thickness.TopXS}"
+                                       Samples="{Binding TrafficSamples}"
+                                       UplinkBrush="{DynamicResource Brush.AccentText}"
+                                       DownlinkBrush="{DynamicResource Brush.SuccessText}"
+                                       BaselineBrush="{DynamicResource Brush.Border}" />
+        </StackPanel>
+
+        <!-- 模式开关：整格由 ControlTheme 承载（选择项、滑块、文案都在里面）。
+             滑块位移靠 Classes.global 驱动 —— 不能写成 $parent[ContentControl]：
+             Window / UserControl 也派生自 ContentControl，那样会选到页面本身。
+             x:Name 只服务 ModeSwitchFixup：把两格的模板补上去（原因见那儿）。 -->
+        <ContentControl Grid.Row="8"
+                        x:Name="ModeSwitch"
+                        Theme="{DynamicResource ModeSwitchStyle}"
+                        Classes.global="{Binding IsGlobalMode}" />
+
+        <!-- 自检 band：按钮 40 + Space.XS 4 + 结果行 20 = 64。
+             结果行是四者共用的预留槽，优先级由 ViewModel 的可见性互斥保证：
+             切换中 > 切换失败 > 自检结论 > 自动延迟。
+             方言：CheckButtonVisibility 在未绑定时是 Hidden（用 40px 的按钮位把 band 撑住），
+             Avalonia 的 IsVisible=false 会把按钮位收掉、band 只剩结果行的 20px。
+             同流量 band：高度由 CheckBandStyle 固定为 64，按钮用 Opacity 藏起来，并同时摘掉
+             命中测试与 Tab 停靠点——WPF 的 Hidden 正是「不画、不点、不进 Tab，但照样占位」。
+             IsTabStop 绑在可见性上而不是写死 false：不可见时它不在 Tab 序列里，可见时必须回来
+             （这是主界面上唯一的键盘按钮）。 -->
+        <StackPanel Grid.Row="10" Theme="{DynamicResource CheckBandStyle}">
+            <Button Content="{Binding CheckButtonText}"
+                    Command="{Binding CheckCommand}"
+                    Opacity="{Binding CheckButtonOpacity}"
+                    IsHitTestVisible="{Binding CheckButtonVisibility}"
+                    IsTabStop="{Binding CheckButtonVisibility}"
+                    Theme="{DynamicResource CheckButtonStyle}" />
+            <Grid Theme="{DynamicResource ReservedLineStyle}"
+                  Margin="{DynamicResource Thickness.TopXS}">                <TextBlock Text="正在切换…"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding IsSwitchingTextVisible}"
+                           Theme="{DynamicResource SecondaryTextStyle}" />
+                <TextBlock Text="{Binding SwitchErrorMessage}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding SwitchErrorVisibility}"
+                           Theme="{DynamicResource InlineErrorTextStyle}" />
+                <TextBlock Text="{Binding CheckResultText}"
+                           IsVisible="{Binding CheckResultVisibility}"
+                           Theme="{DynamicResource CheckResultTextStyle}" />
+                <TextBlock Text="{Binding LatencyText}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           IsVisible="{Binding LatencyTextVisibility}"
+                           Theme="{DynamicResource SecondaryTextStyle}" />
+            </Grid>
+        </StackPanel>
+
+        <Button Grid.Row="12"
+                Content="设置"
+                Command="{Binding SettingsCommand}"
+                Theme="{DynamicResource TextLinkButtonStyle}" />
+    </Grid>
+</UserControl>

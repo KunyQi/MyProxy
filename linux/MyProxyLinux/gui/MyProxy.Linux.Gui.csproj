@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Linux 托盘 GUI。
+
+    它不是连接的持有者：所有动作都是往 runtime/control.sock 发一条控制命令，
+    状态靠每秒一次 status 轮询。连接归守护进程（`myproxy run`）所有——Linux 上
+    「谁在跑内核」只能有一个答案，否则系统代理、心跳与 LastKnownGood 会互相打架。
+
+    OutputType 用 WinExe 而不是 Exe：这个值在 .NET 里的含义是「不弹控制台窗口」，
+    Linux 上同样成立（桌面项启动时不会附带一个终端）。GUI 不需要 stdout。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>myproxy-gui</AssemblyName>
+    <Product>MyProxy</Product>
+    <Title>MyProxy</Title>
+    <Description>MyProxy Linux 客户端</Description>
+    <RootNamespace>MyProxy.Gui</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- 与 AppInfo.Version / core / cli / server / Android / Windows 同步（版本锁）。 -->
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <!--
+      刻意不设 InvariantGlobalization：Avalonia 的文本整形与字体回退依赖 ICU，
+      关掉它等于让中文界面在没有拉丁字形可用时退回豆腐块。
+    -->
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+    <!--
+      Avalonia 11 的默认值就是 false（反射绑定）。显式写出来，是因为它的 XAML
+      编译器会按这个开关决定要不要为每个 Binding 找一个 x:DataType：一旦将来默认值
+      翻成 true，这个工程里所有没写 x:DataType 的绑定会集体编译失败。
+    -->
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 版本钉死：Avalonia 11.x 的小版本之间控件行为有变化，浮动版本会让
+         「同一份源码在两台机器上长得不一样」。 -->
+    <PackageReference Include="Avalonia" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
+    <!-- 随包字体：中文界面在没装 Inter 的机器上也能拿到一致的拉丁字形。 -->
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
+    <!-- 只有 Debug 构建才装：它会把整个可视化树暴露成一个可 inspect 的窗口，
+         正式包里带这个既是体积也是攻击面。 -->
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.2" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\MyProxy.Linux.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,165 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+
+    <!-- ============ 页面骨架 ============ -->
+
+    <!-- 三页唯一页面外壳。左右边界由 Width 保证，View 里不再出现宽度与左右 Margin；
+        水平居中 + 上下各 24 的留白由这一处统一给出。 -->
+    <ControlTheme x:Key="PageRootStyle" TargetType="Grid">
+        <Setter Property="Width" Value="{DynamicResource Size.ContentWidth}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="{DynamicResource Thickness.PageVertical}" />
+    </ControlTheme>
+
+    <!-- 定高预留槽：内部的 TextBlock 保留原来的 IsVisible 绑定，
+         文字消失而槽高不变——否则每次状态变化整页都要上下跳一行。 -->
+    <ControlTheme x:Key="ReservedLineStyle" TargetType="Grid">
+        <Setter Property="Height" Value="{DynamicResource Size.LineSecondary}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="ReservedStatusLineStyle" TargetType="Grid">
+        <Setter Property="Height" Value="{DynamicResource Size.LinePrimary}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </ControlTheme>
+
+    <!-- 状态符号 / Spinner 共用的定宽槽：状态文字不随符号宽度横向漂移。 -->
+    <ControlTheme x:Key="StatusGlyphSlotStyle" TargetType="Grid">
+        <Setter Property="Width" Value="{DynamicResource Size.StatusGlyph}" />
+        <Setter Property="Height" Value="{DynamicResource Size.LinePrimary}" />
+    </ControlTheme>
+
+    <!-- 模式开关那一行：高 36，与输入框同高（都在 Size.Control 这一档）。 -->
+    <ControlTheme x:Key="ModeSegmentRowStyle" TargetType="Grid">
+        <Setter Property="Height" Value="{DynamicResource Size.Control}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </ControlTheme>
+
+
+    <ControlTheme x:Key="TrafficBandStyle" TargetType="StackPanel">
+        <Setter Property="Height" Value="66" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="CheckBandStyle" TargetType="StackPanel">
+        <Setter Property="Height" Value="64" />
+    </ControlTheme>
+
+    <!-- ============ 设置页 ============ -->
+
+    <!-- 分组级分隔线。组尾不画线（只画在组内相邻两行之间），所以它是一条独立的
+         Border，而不是行容器的 BorderThickness。
+
+         这一条是「一份样式服务三套皮肤」的样板：DesignTokens 与 Porcelain 里它
+         就是一道 1px 的 Brush.Border；Ceramic 把同一条线做成**刻痕**——暗线加一道
+         下唇的光——而那份材质已经是令牌（`Brush.Glaze.Rim` + `Thickness.RimBottom`），
+         所以 Ceramic 的字典只要覆盖同一个 key，这里一行都不用改。
+
+         注意上面这句话有一半是给**换肤机制**的要求：`BorderBrush` /
+         `BorderThickness` 必须允许被皮肤字典覆盖（即皮肤字典里要有同名、同
+         TargetType 的 `SettingsGroupRuleStyle`）。 -->
+    <ControlTheme x:Key="SettingsGroupRuleStyle" TargetType="Border">
+        <Setter Property="Height" Value="{DynamicResource Size.Hairline}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </ControlTheme>
+
+    <!-- 统一行容器：行本身不带分隔线，高 44。 -->
+    <ControlTheme x:Key="SettingsRowStyle" TargetType="Grid">
+        <Setter Property="Height" Value="{DynamicResource Size.SettingsRow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </ControlTheme>
+
+    <!--
+      设置页整行可点的导航行：左标题 / 右 chevron，两列内容由 View 提供
+      （`HorizontalContentAlignment=Stretch` 就是为这个）。
+
+      Windows 端它是 `BasedOn="{StaticResource TextLinkButtonStyle}"` 的派生样式。
+      Avalonia 的 ControlTheme 有 `BasedOn`，但 `TextLinkButtonStyle` 属于
+      「文本/链接」那一批（不由本文件负责），跨文件 BasedOn 会让两个作者的改动互相
+      牵制。这里把它真正用到的那几项就地写完：透明底、无边框、高 44、左右内距 0、
+      字号 SizeBody、hover 时浮起一层 `Brush.Border` 的浅釉。
+
+      按下时**不下移**：Windows 端的文字链接只有 hover 那一层淡入，没有按压位移。
+    -->
+    <ControlTheme x:Key="SettingsNavRowStyle" TargetType="Button">
+        <Setter Property="Height" Value="{DynamicResource Size.SettingsRow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="{DynamicResource Thickness.None}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Family}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.SizeBody}" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- 根 Grid 要有一块透明的 Background 才吃得到指针：
+                     Border 的透明区域与 ContentPresenter 都不是命中测试目标。 -->
+                <Grid Background="Transparent">
+                    <!-- hover 层常驻，只用 Opacity 开关。不换 Background 是有意的：
+                         这里要的是「浮起一层釉」，而换底色会连内容一起重绘。
+                         淡入时长走 Transitions（100ms = Motion.Duration.Fast），
+                         三套皮肤各自提供这个时长。 -->
+                    <Border x:Name="HoverLayer"
+                            Background="{DynamicResource Brush.Border}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity"
+                                                  Duration="{DynamicResource Motion.Duration.Fast}" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True" />
+
+                    <!-- 焦点环：WPF 用 FocusVisualStyle，Avalonia 没有这个属性，
+                         改成模板里的一层 1px 描边，由 `:focus-visible` 开关
+                         （键盘 Tab 才亮、鼠标点不亮，与 WPF 的焦点视觉一致）。
+
+                         取值与 DesignTokens.xaml 的 `FocusRingStyle` 逐值对齐：
+                           BorderBrush = Brush.TextPrimary
+                           BorderThickness = Thickness.Hairline (1)
+                           CornerRadius = Radius.SM (6)
+                           Margin = Thickness.Hairline (1)
+                         `FocusRingStyle` 归「文本/链接族」交付者（他正在给它补
+                         `:focus-visible`）；这边保持同一组取值与同一支笔刷令牌，
+                         两处焦点环落到同一个控件上也看不出是两个人写的。 -->
+                    <Border x:Name="FocusRing"
+                            BorderBrush="{DynamicResource Alias.FocusRingBrush}"
+                            BorderThickness="{DynamicResource Thickness.Hairline}"
+                            CornerRadius="{DynamicResource Radius.SM}"
+                            Margin="{DynamicResource Thickness.Hairline}"
+                            IsVisible="False"
+                            IsHitTestVisible="False" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <ControlTheme.Children>
+            <Style Selector="^:pointerover /template/ Border#HoverLayer">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+            <Style Selector="^:focus-visible /template/ Border#FocusRing">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+            </Style>
+        </ControlTheme.Children>
+    </ControlTheme>
+
+</ResourceDictionary>

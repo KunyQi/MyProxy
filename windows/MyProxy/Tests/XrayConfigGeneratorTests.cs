@@ -49,7 +49,7 @@ public sealed class XrayConfigGeneratorTests
     }
 
     [TestMethod]
-    public void Rule_RulesContainCnDirectBeforePrivateAndBt()
+    public void Rule_BlocksPrivateAndBtBeforeDomesticAndMixedAddressDecisions()
     {
         using JsonDocument document = JsonDocument.Parse(Serialize(ProxyMode.Rule));
         JsonElement rules = document.RootElement.GetProperty("routing").GetProperty("rules");
@@ -61,8 +61,10 @@ public sealed class XrayConfigGeneratorTests
 
         Assert.IsTrue(cnDomainIndex >= 0);
         Assert.IsTrue(cnIpIndex >= 0);
-        Assert.IsTrue(cnDomainIndex < privateIndex);
-        Assert.IsTrue(cnIpIndex < privateIndex);
+        int foreignIndex = FindRuleIndex(rules, "!geoip:cn", "proxy");
+        Assert.IsTrue(privateIndex < cnDomainIndex);
+        Assert.IsTrue(btIndex < cnDomainIndex);
+        Assert.IsTrue(privateIndex < foreignIndex && foreignIndex < cnIpIndex);
         Assert.IsTrue(privateIndex < btIndex);
     }
 
@@ -186,12 +188,16 @@ public sealed class XrayConfigGeneratorTests
     }
 
     [TestMethod]
-    public void DnsServers_ContainThreeObjectsAndTwoStringsInOrder()
+    public void DnsServers_RaceEquivalentGroupsWithoutDuplicateOrDomesticFallback()
     {
         using JsonDocument document = JsonDocument.Parse(Serialize(ProxyMode.Global));
-        JsonElement servers = document.RootElement.GetProperty("dns").GetProperty("servers");
+        JsonElement dns = document.RootElement.GetProperty("dns");
+        JsonElement servers = dns.GetProperty("servers");
 
-        Assert.AreEqual(5, servers.GetArrayLength());
+        Assert.IsTrue(dns.GetProperty("enableParallelQuery").GetBoolean());
+        Assert.IsFalse(dns.GetProperty("disableCache").GetBoolean());
+        Assert.AreEqual("UseIP", dns.GetProperty("queryStrategy").GetString());
+        Assert.AreEqual(4, servers.GetArrayLength());
 
         Assert.AreEqual(JsonValueKind.Object, servers[0].ValueKind);
         Assert.AreEqual("223.5.5.5", servers[0].GetProperty("address").GetString());
@@ -200,18 +206,72 @@ public sealed class XrayConfigGeneratorTests
         Assert.AreEqual(JsonValueKind.Object, servers[2].ValueKind);
         Assert.AreEqual("https://1.1.1.1/dns-query", servers[2].GetProperty("address").GetString());
 
-        Assert.AreEqual(JsonValueKind.String, servers[3].ValueKind);
-        Assert.AreEqual("https://1.1.1.1/dns-query", servers[3].GetString());
-        Assert.AreEqual(JsonValueKind.String, servers[4].ValueKind);
-        Assert.AreEqual("https://8.8.8.8/dns-query", servers[4].GetString());
+        Assert.AreEqual(JsonValueKind.Object, servers[3].ValueKind);
+        Assert.AreEqual("https://8.8.8.8/dns-query", servers[3].GetProperty("address").GetString());
+        Assert.IsTrue(servers[0].GetProperty("skipFallback").GetBoolean());
+        Assert.IsTrue(servers[1].GetProperty("skipFallback").GetBoolean());
+        Assert.AreEqual(servers[0].GetProperty("domains").GetRawText(), servers[1].GetProperty("domains").GetRawText());
+        Assert.AreEqual(servers[0].GetProperty("expectIPs").GetRawText(), servers[1].GetProperty("expectIPs").GetRawText());
+        Assert.AreEqual(servers[2].GetProperty("domains").GetRawText(), servers[3].GetProperty("domains").GetRawText());
+        Assert.IsFalse(servers[2].TryGetProperty("skipFallback", out _));
+        Assert.IsFalse(servers[3].TryGetProperty("skipFallback", out _));
+    }
+
+    [DataTestMethod]
+    [DataRow("domain:github.com")]
+    [DataRow("domain:githubusercontent.com")]
+    [DataRow("domain:googleapis.com")]
+    [DataRow("domain:youtube.com")]
+    [DataRow("domain:microsoftonline.com")]
+    [DataRow("domain:cloud.microsoft")]
+    [DataRow("domain:x.com")]
+    [DataRow("domain:chatgpt.com")]
+    [DataRow("domain:oaiusercontent.com")]
+    [DataRow("full:challenges.cloudflare.com")]
+    public void InternationalServices_MatchDomainsBeforeIpFallback(string domainRule)
+    {
+        using JsonDocument document = JsonDocument.Parse(Serialize(ProxyMode.Rule));
+        JsonElement rules = document.RootElement.GetProperty("routing").GetProperty("rules");
+        int index = FindRuleIndex(rules, domainRule, "proxy");
+        Assert.IsTrue(index >= 0 && index < FindRuleIndex(rules, "!geoip:cn", "proxy"));
+        Assert.IsFalse(rules[index].TryGetProperty("ip", out _), "known services must not require DNS for routing");
+    }
+
+    [DataTestMethod]
+    [DataRow("domain:azure.cn")]
+    [DataRow("domain:microsoftonline.cn")]
+    [DataRow("domain:office365.cn")]
+    [DataRow("full:cn.bing.com")]
+    public void MicrosoftChina_RemainsDirectBeforeInternationalServices(string domainRule)
+    {
+        using JsonDocument document = JsonDocument.Parse(Serialize(ProxyMode.Rule));
+        JsonElement rules = document.RootElement.GetProperty("routing").GetProperty("rules");
+        int index = FindRuleIndex(rules, domainRule, "direct");
+        Assert.IsTrue(index >= 0 && index < FindRuleIndex(rules, "domain:microsoft.com", "proxy"));
+        using JsonDocument global = JsonDocument.Parse(Serialize(ProxyMode.Global));
+        Assert.AreEqual(-1, FindRuleIndex(global.RootElement.GetProperty("routing").GetProperty("rules"), domainRule, "direct"));
+    }
+
+    [DataTestMethod]
+    [DataRow(ProxyMode.Rule, "IPIfNonMatch")]
+    [DataRow(ProxyMode.Global, "AsIs")]
+    public void RoutingDomainStrategy_OnlyRuleModeResolvesUnmatchedDomains(ProxyMode mode, string expectedStrategy)
+    {
+        using JsonDocument document = JsonDocument.Parse(Serialize(mode));
+
+        JsonElement routing = document.RootElement.GetProperty("routing");
+        Assert.AreEqual(expectedStrategy, routing.GetProperty("domainStrategy").GetString());
+        Assert.AreEqual(mode == ProxyMode.Rule ? 1 : 0,
+            routing.GetProperty("rules").EnumerateArray().Count(rule =>
+                rule.TryGetProperty("ip", out JsonElement ips) &&
+                ips.EnumerateArray().Any(ip => ip.GetString() == "geoip:cn") &&
+                rule.GetProperty("outboundTag").GetString() == "direct"));
     }
 
     [TestMethod]
-    public void RoutingDomainStrategy_IsAsIs_AndPolicyMatchesTemplate()
+    public void PolicyMatchesTemplate()
     {
         using JsonDocument document = JsonDocument.Parse(Serialize(ProxyMode.Global));
-
-        Assert.AreEqual("AsIs", document.RootElement.GetProperty("routing").GetProperty("domainStrategy").GetString());
 
         JsonElement policy = document.RootElement.GetProperty("policy");
                 Assert.IsTrue(policy.GetProperty("levels").GetProperty("0").GetProperty("statsUserDownlink").GetBoolean());

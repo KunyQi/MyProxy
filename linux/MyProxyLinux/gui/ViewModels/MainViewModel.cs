@@ -477,8 +477,7 @@ public sealed class MainViewModel : ViewModelBase
                 return "检测未通过，请重试";
             }
 
-            // 出口对不上意味着 xray 活着、系统代理也指过去了，但请求其实走了直连。
-            // 这是唯一一种「界面显示已连接、实际没有代理」的静默失效，必须说破。
+            // 只有独立证据确认绕过时才报失败；入口与回显地址不同会保持 Unknown。
             if (_checkEgress == EgressVerdict.Bypassed)
             {
                 return "连接失败，请重试";

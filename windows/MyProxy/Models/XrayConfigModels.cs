@@ -76,6 +76,9 @@ public sealed class DnsConfig
 
     [JsonPropertyName("disableCache")]
     public bool DisableCache { get; set; }
+
+    [JsonPropertyName("enableParallelQuery")]
+    public bool EnableParallelQuery { get; set; }
 }
 
 [JsonConverter(typeof(DnsServerJsonConverter))]
@@ -93,6 +96,9 @@ public sealed class DnsServerEntry : DnsServer
 
     [JsonPropertyName("expectIPs")]
     public List<string>? ExpectIPs { get; set; }
+
+    [JsonPropertyName("skipFallback")]
+    public bool SkipFallback { get; set; }
 }
 
 public sealed class DnsServerAddress : DnsServer
@@ -156,6 +162,10 @@ public sealed class DnsServerJsonConverter : JsonConverter<DnsServer>
                 writer.WriteEndArray();
             }
 
+            if (entry.SkipFallback)
+            {
+                writer.WriteBoolean("skipFallback", true);
+            }
             writer.WriteEndObject();
             return;
         }

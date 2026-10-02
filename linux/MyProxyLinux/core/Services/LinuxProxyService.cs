@@ -493,7 +493,7 @@ public sealed class LinuxProxyService : ISystemProxyService
     private void WriteEnvironmentFiles(string host, int port)
     {
         string contents = LinuxProxyPlatform.BuildEnvironmentFile(
-            host, port, GnomeProxyCommands.DefaultIgnoreHosts);
+            host, port, GnomeProxyCommands.EnvironmentIgnoreHosts);
 
         _platform.WriteEnvironmentFile(EnvironmentDropInPath, contents);
         _platform.WriteEnvironmentFile(ShellEnvironmentPath, contents);

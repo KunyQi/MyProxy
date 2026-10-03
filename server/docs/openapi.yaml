@@ -971,6 +971,173 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /client/releases/{artifactSha256}/{basename}:
+    servers:
+      - url: https://{deviceApiHost}:{deviceApiPort}
+        variables:
+          deviceApiHost:
+            default: api.example.invalid
+          deviceApiPort:
+            default: "443"
+    get:
+      tags: [public]
+      summary: 下载已发布的签名产物或 Linux 分离签名
+      description: |
+        仅 published 的托管 release 可下载；draft/revoked、错误文件名、目录遍历、
+        编码别名与 query 均返回 404。basename 必须完整匹配签名 manifest 的规范文件名
+        myproxy-{platform}-{version}.{zip|apk|tar.gz}；Linux 同路径追加 .sig 返回
+        64 字节 Ed25519 产物签名的 base64 ASCII 加换行，兼容客户端。
+        响应 no-store，撤销后新请求立即失去下载权限。
+      operationId: downloadReleaseArtifact
+      parameters:
+        - in: path
+          name: artifactSha256
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9a-f]{64}$"
+        - in: path
+          name: basename
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 已发布产物（逐块传输）或 Linux base64 分离签名
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+        "404":
+          description: 不存在或未发布（NotFound）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/admin/release-settings:
+    get:
+      tags: [admin]
+      summary: 浏览器本地签名及产物上传设置
+      description: |
+        仅返回可信公钥，永不返回或接收私钥。先计算产物 SHA256，再将 manifest.url
+        设为 artifactBaseUrl/{sha256}/myproxy-{platform}-{version}.{extension}，
+        浏览器本地签名后登记 draft、上传产物、Linux 上传分离签名、发布并指派。
+        artifactUploadEnabled 在未配置可信公钥或上传上限为 0 时为 false。
+        artifactBaseUrl 默认使用 deployment.json 的 API 源站；可通过
+        MYPROXY_RELEASE_ARTIFACT_ORIGIN 指定独立的可信 CA HTTPS 下载源站，
+        不改变现有 API 地址或证书。覆盖值仅允许 scheme/host/port，
+        不允许路径、查询、片段、用户信息或 .invalid 占位域名；空值保持默认。
+        独立下载站必须将严格的 /client/releases/ 下载路由转发到此服务。
+      operationId: adminReleaseSettings
+      security:
+        - AdminBearerAuth: []
+      responses:
+        "200":
+          description: 公共签名参数与上传能力；无服务器文件路径
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseSettings"
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+  /api/admin/release/{releaseId}/artifact:
+    post:
+      tags: [admin]
+      summary: 逐块上传已签名登记 draft 的产物
+      description: |
+        管理员验证先于读取 body。必须 application/octet-stream 与唯一 Content-Length；
+        不接受 multipart/chunked。实际长度和 SHA256 必须与已验签登记的 manifest 一致。
+        默认上限 512 MiB，由 MYPROXY_RELEASE_ARTIFACT_MAX_BYTES 配置，0 禁用。
+        存储默认 DB 父目录/releases，可配置 MYPROXY_RELEASE_ARTIFACT_DIR。
+        校验失败删除临时文件；相同 draft 产物重复上传幂等；published/revoked 不能覆盖。
+        外部手工 URL 的 release 保持原工作流，但不能通过本接口上传。
+      operationId: adminUploadReleaseArtifact
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Content-Length
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: 已校验并保存产物
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactUploadResponse"
+        "400":
+          description: 格式、长度或摘要错误（BadRequest / ManifestRejected）
+        "401":
+          description: 管理员校验失败，body 未读取（AdminUnauthorized）
+        "404":
+          description: release 不存在（NotFound）
+        "409":
+          description: 非 draft、禁用上传、外部 URL 或已存在不同文件（Conflict）
+  /api/admin/release/{releaseId}/artifact-signature:
+    post:
+      tags: [admin]
+      summary: 验证并上传 Linux 产物的 64 字节 Ed25519 签名
+      description: |
+        先上传产物，再上传原始 64 字节签名。octet-stream，Content-Length 必须为 64。
+        使用 release.signingKeyId 对应可信公钥验 raw tarball，且公钥 SHA256 必须等于
+        manifest.artifact.signature.subjectSha256；服务端只验签。缺失产物返回 409，
+        签名无效返回 ManifestRejected。成功后 .sig 公共下载响应为 base64 ASCII。
+      operationId: adminUploadReleaseArtifactSignature
+      security:
+        - AdminBearerAuth: []
+      parameters:
+        - in: path
+          name: releaseId
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Content-Length
+          required: true
+          schema:
+            type: integer
+            enum: [64]
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: 已验证并保存 Linux 分离签名
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactUploadResponse"
+        "400":
+          description: 签名无效或非 Linux/公钥摘要不一致（BadRequest / ManifestRejected）
+        "401":
+          description: 管理员校验失败（AdminUnauthorized）
+        "404":
+          description: release 不存在（NotFound）
+        "409":
+          description: 产物未上传、非 draft 或外部 URL（Conflict）
   /api/admin/release:
     get:
       tags:
@@ -1050,7 +1217,10 @@ paths:
       tags:
         - admin
       summary: 发布 release
-      description: 只有 published 的 release 才能被指派与下发。
+      description: |
+        只有 published 的 release 才能被指派与下发。托管 URL 必须已上传匹配 SHA256/size
+        的产物，Linux 还必须已上传同一可信公钥签名的有效 .sig；缺失或损坏返回 409。
+        手工登记的外部下载 URL 保持兼容。
       operationId: adminPublishRelease
       security:
         - AdminBearerAuth: []
@@ -1977,6 +2147,66 @@ components:
         note:
           type: string
           maxLength: 256
+    ReleaseSettings:
+      type: object
+      required: [artifactUploadEnabled, artifactBaseUrl, maxArtifactBytes, trustedSigningKeys, artifactFilenameTemplate, artifactExtensions]
+      properties:
+        artifactUploadEnabled:
+          type: boolean
+        artifactBaseUrl:
+          type: string
+          format: uri
+          description: 托管下载源站加 /client/releases；默认沿用 API 源站，可由 MYPROXY_RELEASE_ARTIFACT_ORIGIN 独立配置。
+        maxArtifactBytes:
+          type: integer
+          minimum: 0
+          default: 536870912
+        trustedSigningKeys:
+          type: array
+          items:
+            type: object
+            required: [keyId, publicKeyHex]
+            properties:
+              keyId:
+                type: string
+              publicKeyHex:
+                type: string
+                pattern: "^[0-9a-f]{64}$"
+        artifactFilenameTemplate:
+          type: string
+          example: "myproxy-{platform}-{version}.{extension}"
+        artifactExtensions:
+          type: object
+          properties:
+            windows:
+              type: string
+              enum: [zip]
+            android:
+              type: string
+              enum: [apk]
+            linux:
+              type: string
+              enum: [tar.gz]
+    ArtifactUploadResponse:
+      type: object
+      required: [releaseId, artifactUrl, artifactSha256, artifactSize, artifactManaged, artifactReady, platformSignatureReady]
+      properties:
+        releaseId:
+          type: string
+        artifactUrl:
+          type: string
+          format: uri
+        artifactSha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        artifactSize:
+          type: integer
+        artifactManaged:
+          type: boolean
+        artifactReady:
+          type: boolean
+        platformSignatureReady:
+          type: boolean
     Release:
       type: object
       required:
@@ -2012,6 +2242,15 @@ components:
           pattern: "^[0-9a-f]{64}$"
         artifactSize:
           type: integer
+        artifactManaged:
+          type: boolean
+          description: URL 是否属于本机规范产物存储。
+        artifactReady:
+          type: boolean
+          description: 托管产物是否已上传；发布前会重新校验完整摘要。
+        platformSignatureReady:
+          type: boolean
+          description: Linux 是否已有分离签名；Windows/Android 上传后为 true，客户端仍验证平台签名。
         platformSignatureType:
           type: string
           enum: [authenticode, apksigner, ed25519]

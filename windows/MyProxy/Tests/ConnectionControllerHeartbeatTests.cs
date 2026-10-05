@@ -502,8 +502,11 @@ public sealed class ConnectionControllerHeartbeatTests
         }
     }
 
-    [TestMethod]
-    public async Task EveryProbe_GoesThroughTheProbeInbound_NotTheUserProxyPort()
+    [DataTestMethod]
+    [DataRow("node.example.com")]
+    [DataRow("203.0.113.10")]
+    [DataRow("2001:db8::10")]
+    public async Task EveryProbe_UsesProbeInbound_WithoutAssumingServerIngressIsEgress(string serverAddress)
     {
         // 探测若走用户的 http 入站，检测目标可能在智能分流
         // 模式下会被「国内网站直连」放行：测通的是直连，一份隧道不通的配置也会被提升为
@@ -516,7 +519,7 @@ public sealed class ConnectionControllerHeartbeatTests
             using var log = new LogService(Path.Combine(dataRoot, "logs"));
             storage.AttachLogger(log);
             var config = new FakeConfigService(
-                _ => CreateEntry(7, "node.example.com", verified: true),
+                _ => CreateEntry(7, serverAddress, verified: true),
                 _ => new HeartbeatResult { Ok = true, ConfigVersion = 7, ServerTime = DateTimeOffset.UtcNow });
             using var xray = new ListeningFakeXrayService();
             var network = new FakeNetworkService();
@@ -548,6 +551,8 @@ public sealed class ConnectionControllerHeartbeatTests
                     network.ProbePorts.ToArray(),
                     "每一次探测都必须经探测入站");
                 CollectionAssert.AreEqual(new[] { probePort }, network.CheckPorts.ToArray(), "自检同样经探测入站");
+                Assert.IsNull(network.KnownProxyEgressIps.Single(),
+                    "profile 只有入口，不应把 IPv4、IPv6 或域名入口作为出口证据");
             }
             finally { await controller.StopAsync(CancellationToken.None); }
         }
@@ -1465,6 +1470,7 @@ public sealed class ConnectionControllerHeartbeatTests
         /// <summary>每次连通性探测与自检实际发往的本地端口。</summary>
         public ConcurrentQueue<int> ProbePorts { get; } = new();
         public ConcurrentQueue<int> CheckPorts { get; } = new();
+        public ConcurrentQueue<string?> KnownProxyEgressIps { get; } = new();
 
         public FakeNetworkService(params LatencyResult[] results)
         {
@@ -1485,10 +1491,11 @@ public sealed class ConnectionControllerHeartbeatTests
         }
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
-            string host, int port, string expectedEgress, CancellationToken ct)
+            string host, int port, string? knownProxyEgressIp, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             CheckPorts.Enqueue(port);
+            KnownProxyEgressIps.Enqueue(knownProxyEgressIp);
             CheckStarted.TrySetResult();
             if (PendingCheck is not null) return IgnoreCheckCancellation ? PendingCheck : PendingCheck.WaitAsync(ct);
             return Task.FromResult(new ConnectionCheckResult

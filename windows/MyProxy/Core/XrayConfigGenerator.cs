@@ -37,8 +37,101 @@ public static class XrayConfigGenerator
     private const string StatsApiProtocol = "dokodemo-door";
     private const string StatsService = "StatsService";
     private const string DirectDomainStrategy = "AsIs";
-    private const string RoutingDomainStrategy = "AsIs";
+    private const string RuleRoutingDomainStrategy = "IPIfNonMatch";
+    private const string GlobalRoutingDomainStrategy = "AsIs";
     private const string QueryStrategyUseIp = "UseIP";
+
+    // Exact suffix rules avoid an extra local DNS round for common global
+    // services. Domestic entries keep precedence and category tags are reused.
+    private static readonly string[] DomesticMicrosoftDomains =
+    {
+        "domain:azure.cn",
+        "domain:chinacloudapi.cn",
+        "domain:microsoftonline.cn",
+        "domain:microsoft.com.cn",
+        "domain:office365.cn",
+        "full:cn.bing.com",
+    };
+
+    private static readonly string[] OptimizedProxyDomains =
+    {
+        "domain:github.com",
+        "domain:githubusercontent.com",
+        "domain:githubassets.com",
+        "domain:github.io",
+        "domain:ghcr.io",
+        "domain:githubcopilot.com",
+        "domain:githubcopilot.net",
+        "domain:google.com",
+        "domain:googleapis.com",
+        "domain:googleusercontent.com",
+        "domain:gstatic.com",
+        "domain:ggpht.com",
+        "domain:googlevideo.com",
+        "domain:googleadservices.com",
+        "domain:googlesyndication.com",
+        "domain:google-analytics.com",
+        "domain:googleblog.com",
+        "domain:blogspot.com",
+        "domain:withgoogle.com",
+        "domain:microsoft.com",
+        "domain:microsoftonline.com",
+        "domain:microsoft365.com",
+        "domain:cloud.microsoft",
+        "domain:office.com",
+        "domain:office.net",
+        "domain:office365.com",
+        "domain:outlook.com",
+        "domain:outlook.office365.com",
+        "domain:live.com",
+        "domain:onedrive.com",
+        "domain:sharepoint.com",
+        "domain:sharepointonline.com",
+        "domain:teams.microsoft.com",
+        "domain:msauth.net",
+        "domain:msftauth.net",
+        "domain:msauthimages.net",
+        "domain:msftauthimages.net",
+        "domain:azure.com",
+        "domain:azure.net",
+        "domain:windows.net",
+        "domain:azureedge.net",
+        "domain:azurefd.net",
+        "domain:visualstudio.com",
+        "domain:vsassets.io",
+        "domain:bing.com",
+        "domain:msn.com",
+        "domain:openai.com",
+        "domain:chatgpt.com",
+        "domain:oaistatic.com",
+        "domain:oaiusercontent.com",
+        "domain:oaistatsig.com",
+        "domain:openaimerge.com",
+        "full:challenges.cloudflare.com",
+        "full:cdn.workos.com",
+        "full:setup.workos.com",
+        "full:forwarder.workos.com",
+        "full:images.workoscdn.com",
+        "full:workos.imgix.net",
+    };
+
+    private static readonly string[] OptimizedVideoDomains =
+    {
+        "geosite:youtube",
+        "domain:youtube.com",
+        "domain:youtu.be",
+        "domain:ytimg.com",
+        "domain:googlevideo.com",
+    };
+
+    private static readonly string[] OptimizedSocialDomains =
+    {
+        "geosite:twitter",
+        "domain:x.com",
+        "domain:twitter.com",
+        "domain:twimg.com",
+        "domain:t.co",
+    };
 
     public static JsonSerializerOptions CreateJsonOptions()
     {
@@ -305,27 +398,33 @@ public static class XrayConfigGenerator
         {
             QueryStrategy = QueryStrategyUseIp,
             DisableCache = false,
+            EnableParallelQuery = true,
             Servers = new List<DnsServer>
             {
                 new DnsServerEntry
                 {
                     Address = "223.5.5.5",
                     Domains = new List<string> { "geosite:cn" },
-                    ExpectIPs = new List<string> { "geoip:cn" }
+                    ExpectIPs = new List<string> { "geoip:cn" },
+                    SkipFallback = true
                 },
                 new DnsServerEntry
                 {
                     Address = "119.29.29.29",
                     Domains = new List<string> { "geosite:cn" },
-                    ExpectIPs = new List<string> { "geoip:cn" }
+                    ExpectIPs = new List<string> { "geoip:cn" },
+                    SkipFallback = true
                 },
                 new DnsServerEntry
                 {
                     Address = "https://1.1.1.1/dns-query",
                     Domains = new List<string> { "geosite:geolocation-!cn" }
                 },
-                new DnsServerAddress { Value = "https://1.1.1.1/dns-query" },
-                new DnsServerAddress { Value = "https://8.8.8.8/dns-query" }
+                new DnsServerEntry
+                {
+                    Address = "https://8.8.8.8/dns-query",
+                    Domains = new List<string> { "geosite:geolocation-!cn" }
+                }
             }
         };
     }
@@ -355,19 +454,72 @@ public static class XrayConfigGenerator
 
     private static RoutingConfig BuildRoutingConfig(ProxyMode mode, bool categoryAttribution = false)
     {
-        var rules = new List<RoutingRule>();
+        // A resolved address set may contain both private and public addresses.
+        // Block it before any domestic IP can win, in either mode.
+        var rules = new List<RoutingRule>
+        {
+            new()
+            {
+                OutboundTag = BlockedOutboundTag,
+                Type = "field",
+                Ip = new List<string> { "geoip:private" }
+            },
+            new()
+            {
+                OutboundTag = BlockedOutboundTag,
+                Type = "field",
+                Protocol = new List<string> { "bittorrent" }
+            }
+        };
 
-        // 类别规则必须排在直连与拦截规则**之前**：xray 取第一条命中的规则，
-        // 排在 geoip:private 后面的类别规则永远轮不到。但它们又必须排在
-        // geosite:cn 直连之后，否则「国内视频站走直连」这条模式语义会被归因
-        // 规则抢走——归因绝不能改变流量的去向。
         if (mode == ProxyMode.Rule)
         {
             rules.Add(new RoutingRule
             {
                 OutboundTag = DirectOutboundTag,
                 Type = "field",
-                Domain = new List<string> { "geosite:cn" }
+                Domain = new[] { "geosite:cn" }.Concat(DomesticMicrosoftDomains).ToList()
+            });
+        }
+
+        // Attribution follows domestic domain decisions, but precedes the
+        // generic proxy rule so YouTube and X retain their category counters.
+        if (categoryAttribution)
+        {
+            foreach ((_, string tag, string[] geosites) in ServiceCategories.Routed)
+            {
+                IEnumerable<string> extraDomains = tag switch
+                {
+                    "cat-video" => OptimizedVideoDomains,
+                    "cat-social" => OptimizedSocialDomains,
+                    _ => Array.Empty<string>()
+                };
+                rules.Add(new RoutingRule
+                {
+                    OutboundTag = tag,
+                    Type = "field",
+                    Domain = geosites.Concat(extraDomains).Distinct(StringComparer.Ordinal).ToList()
+                });
+            }
+        }
+
+        if (mode == ProxyMode.Rule)
+        {
+            rules.Add(new RoutingRule
+            {
+                OutboundTag = ProxyOutboundTag,
+                Type = "field",
+                Domain = OptimizedProxyDomains.Concat(OptimizedVideoDomains).Concat(OptimizedSocialDomains)
+                    .Append("geosite:geolocation-!cn").Distinct(StringComparer.Ordinal).ToList()
+            });
+            // Xray matches if ANY resolved address belongs to a rule. A foreign
+            // address must therefore win before geoip:cn: mixed public sets go
+            // through the proxy instead of accidentally leaking the foreign IP.
+            rules.Add(new RoutingRule
+            {
+                OutboundTag = ProxyOutboundTag,
+                Type = "field",
+                Ip = new List<string> { "!geoip:cn" }
             });
             rules.Add(new RoutingRule
             {
@@ -377,35 +529,11 @@ public static class XrayConfigGenerator
             });
         }
 
-        if (categoryAttribution)
-        {
-            foreach ((_, string tag, string[] geosites) in ServiceCategories.Routed)
-            {
-                rules.Add(new RoutingRule
-                {
-                    OutboundTag = tag,
-                    Type = "field",
-                    Domain = new List<string>(geosites)
-                });
-            }
-        }
-
-        rules.Add(new RoutingRule
-        {
-            OutboundTag = BlockedOutboundTag,
-            Type = "field",
-            Ip = new List<string> { "geoip:private" }
-        });
-        rules.Add(new RoutingRule
-        {
-            OutboundTag = BlockedOutboundTag,
-            Type = "field",
-            Protocol = new List<string> { "bittorrent" }
-        });
-
         return new RoutingConfig
         {
-            DomainStrategy = RoutingDomainStrategy,
+            // Known domains avoid local DNS. Only unmatched Rule destinations
+            // resolve for IP fallback; Global retains its original AsIs policy.
+            DomainStrategy = mode == ProxyMode.Rule ? RuleRoutingDomainStrategy : GlobalRoutingDomainStrategy,
             Rules = rules
         };
     }

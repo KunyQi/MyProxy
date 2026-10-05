@@ -320,7 +320,7 @@ public sealed class ConnectionControllerTests
         }
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
-            string host, int port, string expectedEgress, CancellationToken ct)
+            string host, int port, string? knownProxyEgressIp, CancellationToken ct)
         {
             return Task.FromResult(new ConnectionCheckResult
             {

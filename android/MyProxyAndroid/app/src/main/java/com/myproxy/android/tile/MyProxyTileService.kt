@@ -69,11 +69,24 @@ class MyProxyTileService : TileService() {
         super.onClick()
         val state = controller.state.value
         val permissionGranted = VpnController.prepare(this) == null
-        when (tileActionFor(state, permissionGranted)) {
+        when (tileActionFor(state, permissionGranted, controller.isTrafficBlocked.value)) {
             TileAction.NONE -> Unit
             TileAction.CONNECT -> controller.connect()
+            TileAction.RETRY -> controller.retry()
             TileAction.STOP -> controller.stop()
             TileAction.OPEN_APP -> openApp()
+            TileAction.REQUEST_CONNECT -> openApp {
+                // Unlocking can take time. Do not restart an already-connected
+                // tunnel or release a blocking hold that appeared meanwhile.
+                val current = controller.state.value
+                if ((current == AppState.DISCONNECTED || current == AppState.ERROR) &&
+                    !controller.isTrafficBlocked.value
+                ) {
+                    // The request is retained until the screen consumes it,
+                    // then consent continues the connection without another tap.
+                    controller.retry()
+                }
+            }
         }
     }
 
@@ -82,14 +95,19 @@ class MyProxyTileService : TileService() {
      * that needs the app must wait for the keyguard to go away --
      * [unlockAndRun] is what asks for that.
      */
-    private fun openApp() {
-        if (isSecure) unlockAndRun { launchMainActivity() } else launchMainActivity()
+    private fun openApp(onLaunched: () -> Unit = {}) {
+        val launch = Runnable {
+            // A failed launch must not leave the controller waiting for VPN
+            // consent in CONNECTING with no screen able to display the dialog.
+            if (launchMainActivity()) onLaunched()
+        }
+        if (isSecure) unlockAndRun(launch) else launch.run()
     }
 
-    private fun launchMainActivity() {
+    private fun launchMainActivity(): Boolean {
         val intent = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        runCatching {
+        return runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 // From API 34 the Intent overload throws; a PendingIntent is
                 // the only accepted form.
@@ -111,9 +129,10 @@ class MyProxyTileService : TileService() {
                 @Suppress("DEPRECATION", "StartActivityAndCollapseDeprecated")
                 startActivityAndCollapse(intent)
             }
+            true
         }.onFailure {
             logger.w(TAG, "failed to open the app from the tile: ${it.javaClass.simpleName}")
-        }
+        }.getOrDefault(false)
     }
 
     private fun render(state: AppState, trafficBlocked: Boolean) {

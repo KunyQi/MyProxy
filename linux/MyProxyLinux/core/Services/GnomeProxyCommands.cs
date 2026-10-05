@@ -18,15 +18,33 @@ internal static class GnomeProxyCommands
     public const string Schema = "org.gnome.system.proxy";
 
     /// <summary>
-    /// 直连名单。默认与 Windows 端的 <c>&lt;local&gt;</c> 等价：本机与私网不走代理。
+    /// 直连名单：IPv4/IPv6 的本机、私网与链路本地地址不走代理。
+    /// GNOME、KDE 使用此名单；环境变量使用范围等价的 <see cref="EnvironmentIgnoreHosts"/>。
+    /// IPv6 地址按网段语法写，不加 URL 方括号。
+    /// 环境变量仅声明例外；各应用对 CIDR（尤其 IPv6）的支持可能不同。
     /// <b>不含</b> <c>127.0.0.1</c> 之外的任何业务域名——代理是给用户上网用的，
     /// 不是给我们挑流量用的。
     /// </summary>
     public static readonly IReadOnlyList<string> DefaultIgnoreHosts = new[]
     {
         "localhost", "127.0.0.0/8", "::1",
-        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16"
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16",
+        "fc00::/7", "fe80::/10"
     };
+
+    /// <summary>
+    /// no_proxy/NO_PROXY 的名单。使用范围等价的整字节 IPv6 前缀，
+    /// 避开部分客户端的部分字节前缀实现差异，且不扩大绕过范围。
+    /// 这不能让不支持 IPv6 CIDR 的客户端获得范围匹配能力；
+    /// 各客户端是否读取环境变量或支持 CIDR，仍由客户端决定。
+    /// </summary>
+    public static readonly IReadOnlyList<string> EnvironmentIgnoreHosts = DefaultIgnoreHosts
+        .SelectMany(host => host switch
+        {
+            "fc00::/7" => new[] { "fc00::/8", "fd00::/8" },
+            "fe80::/10" => Enumerable.Range(0xfe80, 64).Select(prefix => $"{prefix:x4}::/16").ToArray(),
+            _ => new[] { host }
+        }).ToArray();
 
     /// <summary>
     /// 打开手动模式并把 http/https 指到本地入站。

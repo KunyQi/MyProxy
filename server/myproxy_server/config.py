@@ -207,6 +207,13 @@ class Settings:
     # manifests.  Empty means the Update Plane refuses to register releases at
     # all; see release.verify_and_parse for why that is the safe default.
     release_signing_keys: str = ""
+    # Empty directory uses the database's parent / releases. A zero limit
+    # disables browser uploads while preserving externally hosted releases.
+    release_artifact_dir: str = ""
+    release_artifact_max_bytes: int = 512 * 1024 * 1024
+    # An optional HTTPS download origin keeps artifact TLS independent from
+    # the existing API origin. Empty preserves the shared API origin.
+    release_artifact_origin: str = ""
     # Observability Plane.  Retention is enforced on write (this process has
     # no scheduler), and the sweep interval throttles how often a heartbeat is
     # allowed to trigger an x-ui counter read.
@@ -216,6 +223,18 @@ class Settings:
     # This is the only bound on the address history, so lowering it is the
     # lever for keeping less; 0 keeps the current address and no history.
     device_address_history: int = 10
+
+    def __post_init__(self) -> None:
+        if self.release_artifact_origin != "":
+            try:
+                origin, host, _ = parse_api_origin(self.release_artifact_origin)
+            except ValueError as exc:
+                raise ValueError(
+                    "MYPROXY_RELEASE_ARTIFACT_ORIGIN must contain only an HTTPS scheme, host and optional port"
+                ) from exc
+            if host.lower() == "invalid" or host.lower().endswith(".invalid"):
+                raise ValueError("MYPROXY_RELEASE_ARTIFACT_ORIGIN must use a configured HTTPS origin")
+            object.__setattr__(self, "release_artifact_origin", origin)
 
     def require_configured_deployment(self) -> None:
         if self.api_host == "example.invalid" or self.api_host.endswith(".invalid"):
@@ -283,6 +302,13 @@ class Settings:
             xui_helper_socket=_get_str(data, "XUI_HELPER_SOCKET", ""),
             release_signing_keys=_get_str(
                 data, "RELEASE_SIGNING_KEYS", cls.release_signing_keys
+            ),
+            release_artifact_dir=_get_str(data, "RELEASE_ARTIFACT_DIR", cls.release_artifact_dir),
+            release_artifact_max_bytes=_get_int(
+                data, "RELEASE_ARTIFACT_MAX_BYTES", cls.release_artifact_max_bytes
+            ),
+            release_artifact_origin=_get_str(
+                data, "RELEASE_ARTIFACT_ORIGIN", cls.release_artifact_origin
             ),
             usage_retention_days=_get_int(
                 data, "USAGE_RETENTION_DAYS", cls.usage_retention_days

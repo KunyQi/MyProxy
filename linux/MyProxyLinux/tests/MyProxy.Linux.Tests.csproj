@@ -50,6 +50,7 @@
     <!-- 编译 GUI 使用的纯后台可用性策略，无需把 Avalonia GUI 项目引入测试依赖。 -->
     <Compile Include="..\gui\ViewModels\DaemonAvailabilityState.cs" Link="Gui\DaemonAvailabilityState.cs" />
     <Compile Include="..\..\..\windows\MyProxy\Tests\NetworkServiceTests.cs" Link="Shared\NetworkServiceTests.cs" />
+    <Compile Include="..\..\..\windows\MyProxy\Tests\ConnectionCheckTests.cs" Link="Shared\ConnectionCheckTests.cs" />
     <Compile Include="..\..\..\windows\MyProxy\Tests\ConnectivityConfigurationTests.cs" Link="Shared\ConnectivityConfigurationTests.cs" />
   </ItemGroup>
 

@@ -17,7 +17,7 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Any
 
-from . import __version__, auth, db, observability, release
+from . import __version__, artifact, auth, db, observability, release
 from .config import Settings
 from .xui import XuiAdapter, XuiError, new_myproxy_email
 
@@ -115,6 +115,11 @@ class MyProxyService:
 
     def __init__(self, settings: Settings, xui: XuiAdapter) -> None:
         self.settings = settings
+        self.artifacts = artifact.ArtifactStore(settings)
+        # Serialize mutations of one release. Streaming a new large draft
+        # must not hold up downloads of already published versions.
+        self._release_artifact_locks_guard = threading.Lock()
+        self._release_artifact_locks: dict[str, threading.RLock] = {}
         self.xui = xui
         self._claim_lock = threading.Lock()
         # 可观测性扫描的单飞锁：见 _sweep_xui_counters。
@@ -1420,6 +1425,83 @@ class MyProxyService:
 
     # --- admin: releases ------------------------------------------------
 
+    @staticmethod
+    def _artifact_call(callback, *args):
+        try:
+            return callback(*args)
+        except artifact.ArtifactError as exc:
+            raise ServiceError(exc.code, exc.status) from exc
+
+    def _artifact_lock_for(self, release_id: str):
+        with self._release_artifact_locks_guard:
+            return self._release_artifact_locks.setdefault(release_id, threading.RLock())
+
+    def admin_release_settings(self) -> dict:
+        keys = self._signing_keys()
+        return {
+            "artifactUploadEnabled": bool(keys) and self.artifacts.max_bytes > 0,
+            "artifactBaseUrl": self.artifacts.base_url,
+            "maxArtifactBytes": max(0, self.artifacts.max_bytes),
+            "trustedSigningKeys": [
+                {"keyId": key_id, "publicKeyHex": key.hex()}
+                for key_id, key in sorted(keys.items())
+            ],
+            "artifactFilenameTemplate": "myproxy-{platform}-{version}.{extension}",
+            "artifactExtensions": dict(artifact.EXTENSIONS),
+        }
+
+    def _artifact_result(self, record: dict) -> dict:
+        return {
+            "releaseId": record["id"],
+            "artifactUrl": record["artifactUrl"],
+            "artifactSha256": record["artifactSha256"],
+            "artifactSize": record["artifactSize"],
+            **self._artifact_call(self.artifacts.ready, record),
+        }
+
+    def admin_upload_artifact(self, release_id: str, stream, length: int) -> dict:
+        with self._artifact_lock_for(release_id):
+            with db.connect(self.settings.db_path) as conn:
+                record = db.get_release(conn, release_id)
+            if record is None:
+                raise ServiceError("NotFound", 404)
+            self._artifact_call(self.artifacts.upload, record, stream, length)
+            with db.connect(self.settings.db_path) as conn:
+                db.append_release_audit(conn, self._now(None), "release_artifact_uploaded",
+                                        platform=record["platform"], release_id=release_id,
+                                        detail=record["artifactSha256"])
+            return self._artifact_result(record)
+
+    def admin_upload_artifact_signature(self, release_id: str, signature: bytes) -> dict:
+        with self._artifact_lock_for(release_id):
+            with db.connect(self.settings.db_path) as conn:
+                record = db.get_release(conn, release_id)
+            if record is None:
+                raise ServiceError("NotFound", 404)
+            self._artifact_call(self.artifacts.upload_signature, record, signature, self._signing_keys())
+            with db.connect(self.settings.db_path) as conn:
+                db.append_release_audit(conn, self._now(None), "release_artifact_signature_uploaded",
+                                        platform=record["platform"], release_id=release_id)
+            return self._artifact_result(record)
+
+    def open_release_artifact(self, digest: str, basename: str):
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ServiceError("NotFound", 404)
+        with db.connect(self.settings.db_path) as conn:
+            records = db.list_releases(conn, status="published")
+        for record in records:
+            if record["artifactSha256"] == digest and self.artifacts.is_local(record):
+                expected = artifact.filename(record)
+                if basename == expected or (record["platform"] == "linux" and basename == expected + ".sig"):
+                    with self._artifact_lock_for(record["id"]):
+                        # Recheck after taking this release's lock: revoke may
+                        # have won the race since the initial registry query.
+                        with db.connect(self.settings.db_path) as conn:
+                            current = db.get_release(conn, record["id"])
+                        if current is not None:
+                            return self._artifact_call(self.artifacts.open_download, current, basename)
+        raise ServiceError("NotFound", 404)
+
     def admin_register_release(
         self,
         manifest: Any,
@@ -1438,6 +1520,9 @@ class MyProxyService:
         except release.ManifestError:
             # Deliberately generic, exactly like the xui helper boundary: a
             # caller must not be able to use the reply to map the validator.
+            raise ServiceError("ManifestRejected", 400)
+
+        if self.artifacts.uses_local_namespace(summary) and not self.artifacts.is_local(summary):
             raise ServiceError("ManifestRejected", 400)
 
         with db.connect(self.settings.db_path) as conn:
@@ -1467,7 +1552,7 @@ class MyProxyService:
                 release_id=created.get("id", ""),
                 detail=summary["version"],
             )
-        return created
+        return {**created, **self._artifact_call(self.artifacts.ready, created)}
 
     def admin_list_releases(
         self, platform: str | None = None, status: str | None = None
@@ -1478,7 +1563,9 @@ class MyProxyService:
             raise ServiceError("BadRequest", 400)
         with db.connect(self.settings.db_path) as conn:
             releases = db.list_releases(conn, platform=platform, status=status)
-        return {"releases": releases}
+        return {"releases": [
+            {**record, **self._artifact_call(self.artifacts.ready, record)} for record in releases
+        ]}
 
     def admin_set_release_status(
         self, release_id: str, status: Any, now: str | None = None
@@ -1486,7 +1573,7 @@ class MyProxyService:
         if status not in ("published", "revoked"):
             raise ServiceError("BadRequest", 400)
         now = self._now(now)
-        with db.connect(self.settings.db_path) as conn:
+        with self._artifact_lock_for(release_id), db.connect(self.settings.db_path) as conn:
             conn.execute("BEGIN IMMEDIATE")
             current = db.get_release(conn, release_id)
             if current is None:
@@ -1495,6 +1582,8 @@ class MyProxyService:
                 # Un-revoking would silently resurrect a build that was pulled
                 # for a reason.  Register a new version instead.
                 raise ServiceError("Conflict", 409)
+            if status == "published":
+                self._artifact_call(self.artifacts.require_publishable, current, self._signing_keys())
             db.set_release_status(conn, release_id, status, now)
             db.append_release_audit(
                 conn,
@@ -1507,7 +1596,7 @@ class MyProxyService:
             updated = db.get_release(conn, release_id)
         if updated is None:
             raise ServiceError("ServerError", 500)
-        return updated
+        return {**updated, **self._artifact_call(self.artifacts.ready, updated)}
 
     # --- admin: assignments ---------------------------------------------
 

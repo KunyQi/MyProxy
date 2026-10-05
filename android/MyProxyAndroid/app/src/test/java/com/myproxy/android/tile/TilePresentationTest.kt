@@ -15,9 +15,8 @@ class TilePresentationTest {
     }
 
     @Test
-    fun `an unbound device offers nothing to switch`() {
-        assertEquals(TileVisual.UNAVAILABLE, tileVisualFor(AppState.UNBOUND))
-        // ...but the tap still has somewhere useful to go.
+    fun `an unbound device stays clickable for pairing`() {
+        assertEquals(TileVisual.INACTIVE, tileVisualFor(AppState.UNBOUND))
         assertEquals(TileAction.OPEN_APP, tileActionFor(AppState.UNBOUND, true))
         assertEquals(TileAction.OPEN_APP, tileActionFor(AppState.UNBOUND, false))
     }
@@ -38,29 +37,40 @@ class TilePresentationTest {
     @Test
     fun `connecting from the tile needs vpn consent already granted`() {
         // The system consent dialog cannot be raised from the shade, so
-        // without consent the only honest action is to open the app.
+        // without consent the app must obtain it and then continue connecting.
         assertEquals(TileAction.CONNECT, tileActionFor(AppState.DISCONNECTED, true))
-        assertEquals(TileAction.OPEN_APP, tileActionFor(AppState.DISCONNECTED, false))
+        assertEquals(TileAction.REQUEST_CONNECT, tileActionFor(AppState.DISCONNECTED, false))
     }
 
     @Test
     fun `a live tunnel stops from the tile`() {
         assertEquals(TileAction.STOP, tileActionFor(AppState.CONNECTED, true))
+        assertEquals(TileAction.STOP, tileActionFor(AppState.CONNECTED, false))
     }
 
     @Test
-    fun `a failure is never resolved from the shade`() {
-        // A failure may be a kill-switch hold. Releasing traffic protection
-        // must not be one stray tap away, and it needs an explanation the
-        // tile has no room for.
-        assertEquals(TileAction.OPEN_APP, tileActionFor(AppState.ERROR, true))
-        assertNotEquals(TileAction.CONNECT, tileActionFor(AppState.ERROR, true))
-        assertNotEquals(TileAction.STOP, tileActionFor(AppState.ERROR, true))
+    fun `an ordinary failure retries after vpn consent`() {
+        assertEquals(TileAction.RETRY, tileActionFor(AppState.ERROR, true))
+        assertEquals(TileAction.REQUEST_CONNECT, tileActionFor(AppState.ERROR, false))
+    }
+
+    @Test
+    fun `a blocking hold is only resolved in the app`() {
+        for (permissionGranted in listOf(true, false)) {
+            val action = tileActionFor(AppState.ERROR, permissionGranted, trafficBlocked = true)
+            assertEquals(TileAction.OPEN_APP, action)
+            assertNotEquals(TileAction.CONNECT, action)
+            assertNotEquals(TileAction.RETRY, action)
+            assertNotEquals(TileAction.REQUEST_CONNECT, action)
+            assertNotEquals(TileAction.STOP, action)
+        }
     }
 
     @Test
     fun `taps during a transition are ignored`() {
-        assertEquals(TileAction.NONE, tileActionFor(AppState.CONNECTING, true))
-        assertEquals(TileAction.NONE, tileActionFor(AppState.DISCONNECTING, true))
+        for (permissionGranted in listOf(true, false)) {
+            assertEquals(TileAction.NONE, tileActionFor(AppState.CONNECTING, permissionGranted))
+            assertEquals(TileAction.NONE, tileActionFor(AppState.DISCONNECTING, permissionGranted))
+        }
     }
 }

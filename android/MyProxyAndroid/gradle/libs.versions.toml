@@ -1,9 +1,9 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.0.21"
+agp = "9.4.1"
+kotlin = "2.4.20"
 coreKtx = "1.15.0"
 activityCompose = "1.9.3"
-composeBom = "2024.12.01"
+composeBom = "2026.09.00"
 navigationCompose = "2.8.5"
 lifecycle = "2.8.7"
 datastore = "1.1.1"
@@ -32,6 +32,5 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

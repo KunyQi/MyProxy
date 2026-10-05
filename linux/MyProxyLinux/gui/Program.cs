@@ -29,8 +29,8 @@ namespace MyProxy.Gui;
 public static class Program
 {
     /// <summary>
-    /// Avalonia 的构建入口。名字与签名不能改：Avalonia 的 XAML 预览器与
-    /// <c>Avalonia.Diagnostics</c> 会按约定反射调用 <c>BuildAvaloniaApp</c>。
+    /// Avalonia 的构建入口。名字与签名不能改：Avalonia 的 XAML 预览器
+    /// 会按约定反射调用 <c>BuildAvaloniaApp</c>。
     /// </summary>
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()

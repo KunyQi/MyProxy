@@ -53,7 +53,7 @@ Windows、Android、Linux 在构建时使用该配置；更换入口后重新构
 
 ## 构建与测试
 
-依赖：.NET SDK **8.0.424**、Python **3.12+**；Android 需要 JDK **17** 与 Android SDK **35**。从仓库根运行：
+依赖：.NET SDK **9.0.318**、.NET **8** 运行时、Python **3.12+**；Android 需要 JDK **17** 与 Android SDK **35**。从仓库根运行：
 
 ~~~text
 dotnet build windows/MyProxy/MyProxy.csproj -c Release

@@ -281,7 +281,7 @@ public sealed class PairingCodeInput : TextBox
                 return;
             }
 
-            string? text = await clipboard.GetTextAsync();
+            string? text = await clipboard.TryGetTextAsync();
             if (string.IsNullOrEmpty(text))
             {
                 return;

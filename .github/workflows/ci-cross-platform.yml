@@ -89,7 +89,7 @@ jobs:
           packages: 'platform-tools'
 
       - name: Install Android build tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Verify cross-platform release inputs
         run: python scripts/release_verify.py check

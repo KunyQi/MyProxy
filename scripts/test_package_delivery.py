@@ -15,6 +15,31 @@ import package_delivery as packaging
 
 class PackagePolicyTests(unittest.TestCase):
 
+    def test_dotnet_resolution_uses_sdk_selected_by_global_json(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dotnet = root / "dotnet"
+            dotnet.touch()
+            (root / "global.json").write_text('{"sdk":{"version":"9.0.318"}}', encoding="utf-8")
+            with patch.object(packaging, "ROOT", root), \
+                    patch.object(packaging.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "9.0.318\n", "")) as run:
+                self.assertEqual(packaging.resolve_dotnet(str(dotnet)), dotnet)
+                self.assertEqual(run.call_args.args[0], [str(dotnet), "--version"])
+                self.assertEqual(run.call_args.kwargs["cwd"], root)
+
+    def test_dotnet_resolution_rejects_sdk_that_does_not_match_global_json(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dotnet = root / "dotnet"
+            dotnet.touch()
+            (root / "global.json").write_text('{"sdk":{"version":"9.0.318"}}', encoding="utf-8")
+            with patch.object(packaging, "ROOT", root), \
+                    patch.object(packaging.shutil, "which", return_value=None), \
+                    patch.dict(packaging.os.environ, {}, clear=True), \
+                    patch.object(packaging.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "8.0.424\n", "")):
+                with self.assertRaisesRegex(packaging.PreflightError, "9.0.318 from global.json"):
+                    packaging.resolve_dotnet(str(dotnet))
+
     def test_packaging_preflight_rejects_unconfigured_example_before_build(self) -> None:
         with patch.object(packaging, "release_version", return_value="0.1.0"), \
                 patch.object(packaging.release_verify, "verify_deployment_config", side_effect=packaging.release_verify.ReleaseVerificationError("replace example origin")), \

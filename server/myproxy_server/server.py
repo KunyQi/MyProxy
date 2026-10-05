@@ -17,9 +17,10 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import __version__, auth, release
+from . import __version__, artifact, auth, release
 from .admin_ui import ASSETS as ADMIN_UI_ASSETS
 from .app import ServiceError
+from .release_ui import RELEASE_SIGNING_JS
 
 
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
@@ -63,6 +64,8 @@ REQUEST_TIMEOUT_SECONDS = 30
 TLS_HANDSHAKE_TIMEOUT_SECONDS = 10
 MAX_CONCURRENT_REQUESTS = 64
 MAX_TRACKED_CLAIM_IPS = 10_000
+TLS_BODY_LINGER_SECONDS = 0.2
+TLS_BODY_LINGER_BYTES = 64 * 1024
 
 
 def _complete_tls_handshake(request) -> bool:
@@ -168,6 +171,46 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:
         """Suppress default BaseHTTPRequestHandler logging."""
 
+    def finish(self) -> None:
+        # Closing a TLS socket with a late, unread upload in its receive queue
+        # can reset TCP and truncate the error response already sent to the
+        # peer. Keep rejected bodies outside the application, but briefly drain
+        # them after flushing that response and before closing the streams.
+        try:
+            if (isinstance(self.connection, ssl.SSLSocket)
+                    and self.close_connection
+                    and not getattr(self, "_body_consumed", True)):
+                self._linger_unread_tls_body()
+        finally:
+            super().finish()
+
+    def _linger_unread_tls_body(self) -> None:
+        length = self._declared_body_length()
+        if length == 0:
+            return
+        previous_timeout = self.connection.gettimeout()
+        try:
+            self.wfile.flush()
+            remaining_bytes = min(length, TLS_BODY_LINGER_BYTES) if length is not None else TLS_BODY_LINGER_BYTES
+            deadline = time.monotonic() + TLS_BODY_LINGER_SECONDS
+            while remaining_bytes > 0:
+                remaining_time = deadline - time.monotonic()
+                if remaining_time <= 0:
+                    break
+                self.connection.settimeout(remaining_time)
+                # read1 also consumes any bytes prefetched while parsing the
+                # headers. It never waits for an entire advertised package.
+                chunk = self.rfile.read1(min(16 * 1024, remaining_bytes))
+                if not chunk:
+                    break
+                remaining_bytes -= len(chunk)
+        except OSError:
+            # The reply has already been emitted. A timeout/disconnect only
+            # ends the bounded drain; it must not trigger another response.
+            pass
+        finally:
+            self.connection.settimeout(previous_timeout)
+
     # ------------------------------------------------------------------
     # dispatch / routing
     # ------------------------------------------------------------------
@@ -253,6 +296,9 @@ class _Handler(BaseHTTPRequestHandler):
             content_type, data = ADMIN_UI_ASSETS["js"]
             return self._send_static(200, content_type, data)
 
+        if method == "GET" and segments == ["admin", "release-signing.js"]:
+            return self._send_static(200, "text/javascript; charset=utf-8", RELEASE_SIGNING_JS)
+
         # Public routes -------------------------------------------------
         # Private ticket exchange; public nginx does not expose /admin/*.
         if method == "POST" and segments == ["admin", "session"]:
@@ -296,6 +342,12 @@ class _Handler(BaseHTTPRequestHandler):
 
         if method == "GET" and segments == ["client", "linux", "latest.json"]:
             return self._send_json(200, self.service.latest_info("linux"))
+
+        if len(segments) >= 2 and segments[:2] == ["client", "releases"]:
+            if (method == "GET" and len(segments) == 4 and raw_target == parsed.path and
+                    parsed.path == "/" + "/".join(segments) and "%" not in parsed.path):
+                return self._send_artifact(segments[2], segments[3])
+            return self._send_error(404, "NotFound")
 
         if method == "POST" and segments == ["api", "device", "claim"]:
             if not self.claim_tracker.allow(self._claim_source_ip()):
@@ -356,6 +408,11 @@ class _Handler(BaseHTTPRequestHandler):
         # Admin routes --------------------------------------------------
         if len(segments) >= 2 and segments[0] == "api" and segments[1] == "admin":
             if not self._admin_authorized():
+                # A rejected upload never reads its body before authentication
+                # or allows connection reuse. finish only discards a bounded
+                # tail after the error response to avoid a TLS reset.
+                if len(segments) == 5 and segments[2] == "release" and segments[4] in ("artifact", "artifact-signature"):
+                    self.close_connection = True
                 _emit_structured(
                     "security",
                     request_id=self._request_id,
@@ -369,6 +426,22 @@ class _Handler(BaseHTTPRequestHandler):
         return self._send_error(404, "NotFound")
 
     def _route_admin(self, method: str, rest: list[str], query: dict) -> int:
+        if method == "GET" and rest == ["release-settings"]:
+            return self._send_json(200, self.service.admin_release_settings())
+        if method == "POST" and len(rest) == 3 and rest[0] == "release" and rest[2] in ("artifact", "artifact-signature"):
+            # Authentication has already succeeded. Unlike JSON, these bodies
+            # are streamed with a separate bounded framing check.
+            self.close_connection = True
+            length = self._artifact_body_length(signature=rest[2] == "artifact-signature")
+            if rest[2] == "artifact":
+                result = self.service.admin_upload_artifact(rest[1], self.rfile, length)
+            else:
+                raw = self.rfile.read(length)
+                if len(raw) != length:
+                    raise ServiceError("BadRequest", 400)
+                result = self.service.admin_upload_artifact_signature(rest[1], raw)
+            self._body_consumed = True
+            return self._send_json(200, result)
         if method == "POST" and rest == ["ui-ticket"]:
             token = auth.extract_bearer(self.headers.get("Authorization")) or ""
             if not auth.timing_safe_equal(self.settings.admin_token, token):
@@ -677,6 +750,40 @@ class _Handler(BaseHTTPRequestHandler):
         if length < 0 or length > MAX_JSON_BODY_BYTES:
             return None
         return length
+
+    def _artifact_body_length(self, *, signature: bool) -> int:
+        values = self.headers.get_all("Content-Length") or []
+        encoding = self.headers.get("Transfer-Encoding", "") or ""
+        content_type = (self.headers.get("Content-Type", "") or "").split(";", 1)[0].strip().lower()
+        if (len(values) != 1 or not re.fullmatch(r"[0-9]+", values[0]) or
+                encoding.lower() not in ("", "identity") or content_type != "application/octet-stream"):
+            raise ServiceError("BadRequest", 400)
+        try:
+            length = int(values[0])
+        except ValueError:
+            raise ServiceError("BadRequest", 400)
+        if signature:
+            if length != 64:
+                raise ServiceError("BadRequest", 400)
+        elif length <= 0 or length > self.settings.release_artifact_max_bytes:
+            raise ServiceError("ManifestRejected", 400)
+        return length
+
+    def _send_artifact(self, digest: str, basename: str) -> int:
+        stream, length = self.service.open_release_artifact(digest, basename)
+        with stream:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=us-ascii" if basename.endswith(".sig") else "application/octet-stream")
+            self.send_header("Content-Length", str(length))
+            self.send_header("Content-Disposition", f'attachment; filename="{basename}"')
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Request-ID", self._request_id)
+            self._send_close_header_if_closing()
+            self.end_headers()
+            for chunk in iter(lambda: stream.read(artifact.CHUNK_BYTES), b""):
+                self.wfile.write(chunk)
+        return 200
 
     def _read_body_bytes(self) -> bytes:
         length = self._declared_body_length()

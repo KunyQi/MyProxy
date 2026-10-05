@@ -3,22 +3,21 @@ using MyProxy.Core;
 namespace MyProxy.Models;
 
 /// <summary>
-/// 出口归属的判定：本次探测的回显 IP 是否就是设备绑定的那台服务器。
+/// 基于可信出口数据的判定；连通性与出口归属是不同的结论。
 /// </summary>
 /// <remarks>
-/// 这是「到底连上没有」唯一能给出证据的一项。204 探测只能证明「有东西按规范应答了」，
-/// 证明不了流量从哪出去；只有把回显 IP 和 <see cref="ServerProfile.Server"/> 对上，
-/// 才排除了「xray 活着、系统代理也指过去了，但请求其实走的本地直连」这一类静默失效。
+/// <see cref="ServerProfile.Server"/> 是连接入口，并不保证也是出口。204 探测通过时可以报告
+/// 连通；没有独立确认的出口数据时，不能用入口与回显 IP 的差异推断流量绕过隧道。
 /// </remarks>
 public enum EgressVerdict
 {
-    /// <summary>未判定：回显探测失败，或绑定的服务器地址不是 IP 字面量（域名无法本地比对，宁可不判也不误判）。</summary>
+    /// <summary>缺少可信出口数据、回显不可用或不匹配；这些情况都不足以证明绕过。</summary>
     Unknown,
 
-    /// <summary>回显 IP 等于绑定的服务器地址：流量确实由该服务器转出。</summary>
+    /// <summary>回显 IP 匹配独立确认的代理出口地址。</summary>
     Verified,
 
-    /// <summary>回显 IP 不是绑定的服务器地址：本次请求没有走隧道。</summary>
+    /// <summary>有独立证据证明请求绕过隧道；单纯入口/回显 IP 不同不能得出此结论。</summary>
     Bypassed
 }
 

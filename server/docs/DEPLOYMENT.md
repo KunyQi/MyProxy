@@ -42,4 +42,6 @@ health 应为 200，connectivity-check 应为 204 且无响应体；公网 Admin
 
 管理经 SSH 隧道进入 `127.0.0.1:1820`，需要自行安全提供 Admin Bearer。不要向公网代理 Admin 路由。`predeploy_private.py` 可先执行 `--audit-only`；带 `--deploy --confirm PRIVATE-PREDEPLOY` 时仅安装私有后端并将同一配置纳入事务，不修改 nginx 或防火墙。
 
+后台的「发布指派」向导在浏览器完成更新清单签名，并上传安装包、发布与指派版本。首次使用需配置 `MYPROXY_RELEASE_SIGNING_KEYS` 的 systemd drop-in 和客户端内置公钥，具体步骤见 [图形化发布与指派](../../docs/release-publishing.md)。部署新版 nginx 模板后，已发布安装包可通过受限的 `/client/releases/` 下载路由访问；管理、上传及签名界面仍只通过私有入口访问。
+
 根配置、客户端发布构建与服务端配置应同步更新。开放的 API 端口与 Xray 端口需在主机和云防火墙放行，私有 1820 保持禁止公网连接。数据库含设备记录与地址信息，备份按私有数据处理。

@@ -28,11 +28,13 @@ RUNTIME_FILES = (
     "__main__.py",
     "admin_ui.py",
     "app.py",
+    "artifact.py",
     "auth.py",
     "config.py",
     "db.py",
     "observability.py",
     "release.py",
+    "release_ui.py",
     "server.py",
     "xui.py",
     "xui_helper.py",
@@ -865,7 +867,7 @@ PY
 }
 
 assert_admin_ui() {
-  local headers body html_status css_status js_status unknown_status root_status valid
+  local headers body html_status css_status js_status signing_js_status unknown_status root_status valid
   headers="$(mktemp /tmp/myproxy-admin-ui-headers.XXXXXX)"
   body="$(mktemp /tmp/myproxy-admin-ui-body.XXXXXX)"
   chmod 0600 "$headers" "$body"
@@ -875,13 +877,15 @@ assert_admin_ui() {
     https://127.0.0.1:1820/admin/app.css || true)"
   js_status="$(curl --noproxy '*' -ksS -o /dev/null -w '%{http_code}' \
     https://127.0.0.1:1820/admin/app.js || true)"
+  signing_js_status="$(curl --noproxy '*' -ksS -o /dev/null -w '%{http_code}' \
+    https://127.0.0.1:1820/admin/release-signing.js || true)"
   unknown_status="$(curl --noproxy '*' -ksS -o /dev/null -w '%{http_code}' \
     https://127.0.0.1:1820/admin/unknown || true)"
   root_status="$(curl --noproxy '*' -ksS -o /dev/null -w '%{http_code}' \
     https://127.0.0.1:1820/ || true)"
   valid=1
   if [ "$html_status" != 200 ] || [ "$css_status" != 200 ] || \
-     [ "$js_status" != 200 ] || [ "$unknown_status" != 404 ] || \
+     [ "$js_status" != 200 ] || [ "$signing_js_status" != 200 ] || [ "$unknown_status" != 404 ] || \
      [ "$root_status" != 404 ] || \
      ! grep -Fq '<title>MyProxy Server Management</title>' "$body" || \
      ! grep -qi '^Content-Security-Policy:.*default-src' "$headers" || \
@@ -944,7 +948,7 @@ if [ "$actual_top_level" != "$expected_top_level" ]; then
   echo '错误：上传载荷顶层白名单不精确' >&2
   exit 1
 fi
-expected_files=$'__init__.py\n__main__.py\nadmin_ui.py\napp.py\nauth.py\nconfig.py\ndb.py\nobservability.py\nrelease.py\nserver.py\nxui.py\nxui_helper.py'
+expected_files=$'__init__.py\n__main__.py\nadmin_ui.py\napp.py\nartifact.py\nauth.py\nconfig.py\ndb.py\nobservability.py\nrelease.py\nrelease_ui.py\nserver.py\nxui.py\nxui_helper.py'
 actual_files="$(find "$REMOTE_TMP/myproxy_server" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
 if [ "$actual_files" != "$expected_files" ] || \
    [ -n "$(find "$REMOTE_TMP/myproxy_server" -mindepth 1 -maxdepth 1 ! -type f -print -quit)" ]; then

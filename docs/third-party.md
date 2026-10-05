@@ -9,7 +9,7 @@
 | [v2ray-rules-dat](https://github.com/Loyalsoldier/v2ray-rules-dat) | GeoIP/GeoSite 来源经 Xray v26.9.9 的 [资产更新工作流](https://github.com/XTLS/Xray-core/blob/v26.9.9/.github/workflows/scheduled-assets-update.yml) 确认；项目裁剪使用到的标签，清单记录原始和裁剪后摘要 |
 | [v2fly/geoip](https://github.com/v2fly/geoip)、[domain-list-community](https://github.com/v2fly/domain-list-community) | 规则数据的上游生成器和社区列表；数据与生成器遵循各自随附许可 |
 | [.NET Runtime](https://github.com/dotnet/runtime)、[WPF](https://github.com/dotnet/wpf) | .NET 8，Windows WPF / Linux 通用运行库；实际自包含运行时版本由构建产物清单记录 |
-| [Avalonia](https://github.com/AvaloniaUI/Avalonia)、[Inter](https://github.com/rsms/inter) | Avalonia/Desktop/Fluent/Fonts.Inter 11.3.2，Diagnostics 仅 Debug；[GUI 项目](../linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj) 固定直接包版本 |
+| [Avalonia](https://github.com/AvaloniaUI/Avalonia)、[Inter](https://github.com/rsms/inter) | Avalonia/Desktop/Fluent/Fonts.Inter 12.1.3；[GUI 项目](../linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj) 固定直接包版本 |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) / [Skia](https://skia.org/)、[HarfBuzz](https://github.com/harfbuzz/harfbuzz)、[MicroCom](https://github.com/kekekeks/MicroCom)、[Tmds.DBus](https://github.com/tmds/Tmds.DBus)、[ANGLE](https://chromium.googlesource.com/angle/angle) | Avalonia 的原生渲染、文字整形与桌面互操作传递依赖；以对应 NuGet 包依赖及 native assets 记录为准 |
 | [AndroidX / Compose](https://github.com/androidx/androidx) | Core KTX、Activity Compose、UI/Graphics/Tooling/Preview、Material3、Navigation、Lifecycle Runtime/ViewModel、DataStore；版本及 BOM 见 [version catalog](../android/MyProxyAndroid/gradle/libs.versions.toml) |
 | [Kotlin](https://github.com/JetBrains/kotlin) | 2.0.21，含 Android/Compose/Serialization 编译插件与标准库 |
@@ -19,7 +19,7 @@
 | [3x-ui](https://github.com/MHSanaei/3x-ui) | 外部部署集成；保留原面板，适配器读写其设备与配置数据 |
 | [nginx](https://github.com/nginx/nginx)、[OpenSSL](https://github.com/openssl/openssl)、[curl](https://github.com/curl/curl) | 外部 HTTPS 网关、证书验证、下载与验收工具，版本由部署环境记录 |
 | [systemd](https://github.com/systemd/systemd)、[GNU Bash](https://www.gnu.org/software/bash/)、[GLib / GSettings](https://docs.gtk.org/gio/class.Settings.html) | 用户/服务端服务管理、部署脚本、GNOME 代理设置 |
-| [.NET SDK](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | SDK 8.0.424，见 [global.json](../global.json)；构建与发布 |
+| [.NET SDK](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | SDK 9.0.318，见 [global.json](../global.json)；构建与发布，客户端运行目标仍为 .NET 8 |
 | [OpenJDK](https://github.com/openjdk/jdk17u)、[Gradle](https://github.com/gradle/gradle)、[AGP](https://android.googlesource.com/platform/tools/base/)、[Android SDK Build Tools](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/) | JDK 17、Gradle 8.13、AGP 8.13.2、SDK/Build Tools 35；wrapper JAR 和分发包摘要固定 |
 | [MSTest](https://github.com/microsoft/testfx)、[VSTest](https://github.com/microsoft/vstest) | MSTest Framework/Adapter 3.6.4、Microsoft.NET.Test.Sdk 17.11.1；Windows/Linux 测试项目 |
 | [JUnit 4](https://github.com/junit-team/junit4)、[Hamcrest](https://github.com/hamcrest/JavaHamcrest) | JUnit 4.13.2 与传递断言库；Android JVM 测试 |

@@ -4,7 +4,7 @@ Linux 客户端包含守护进程、CLI 和 Avalonia 托盘 GUI。守护进程�
 
 ## 构建
 
-需要 .NET SDK 8.0.424。先修改仓库根 deployment.json，从仓库根运行：
+需要 .NET SDK 9.0.318 和 .NET 8 运行时。先修改仓库根 deployment.json，从仓库根运行：
 
 ~~~sh
 dotnet build linux/MyProxyLinux/core/MyProxy.Linux.Core.csproj -c Release

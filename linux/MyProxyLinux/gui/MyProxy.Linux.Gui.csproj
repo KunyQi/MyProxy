@@ -41,16 +41,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 版本钉死：Avalonia 11.x 的小版本之间控件行为有变化，浮动版本会让
+    <!-- 版本钉死：Avalonia 的小版本之间控件行为有变化，浮动版本会让
          「同一份源码在两台机器上长得不一样」。 -->
     <PackageReference Include="Avalonia" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
     <!-- 随包字体：中文界面在没装 Inter 的机器上也能拿到一致的拉丁字形。 -->
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
-    <!-- 只有 Debug 构建才装：它会把整个可视化树暴露成一个可 inspect 的窗口，
-         正式包里带这个既是体积也是攻击面。 -->
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.2" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
   </ItemGroup>
 
   <ItemGroup>

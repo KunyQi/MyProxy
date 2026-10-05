@@ -280,6 +280,7 @@ def assert_release_snapshot(expected_revision: str) -> None:
 
 
 def resolve_dotnet(explicit: str | None = None) -> Path:
+    required_sdk = json.loads((ROOT / "global.json").read_text(encoding="utf-8"))["sdk"]["version"]
     candidates: list[Path] = []
     if explicit:
         candidates.append(Path(explicit))
@@ -298,15 +299,14 @@ def resolve_dotnet(explicit: str | None = None) -> Path:
             continue
         seen.add(candidate)
         result = subprocess.run(
-            [str(candidate), "--list-sdks"], cwd=ROOT,
+            [str(candidate), "--version"], cwd=ROOT,
             capture_output=True, text=True,
         )
-        sdk_lines = [line for line in result.stdout.splitlines() if line.strip()]
-        if result.returncode == 0 and any(re.match(r"\s*8\.", line) for line in sdk_lines):
+        if result.returncode == 0 and result.stdout.strip() == required_sdk:
             return candidate
     raise PreflightError(
-        "a .NET 8 SDK is required; runtime-only dotnet is insufficient. "
-        "Install the SDK or set MYPROXY_DOTNET to a dotnet executable with --list-sdks output."
+        f".NET SDK {required_sdk} from global.json is required; runtime-only dotnet is insufficient. "
+        "Install the pinned SDK or set MYPROXY_DOTNET to a matching dotnet executable."
     )
 
 

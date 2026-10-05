@@ -197,17 +197,39 @@ class CategoryRoutingTest {
     }
 
     @Test
-    fun `category rules come after direct but before blocked`() {
-        // Ahead of geosite:cn they would steal rule mode's "domestic sites
-        // go direct" meaning; behind geoip:private they would never be
-        // reached, because the core takes the first matching rule.
+    fun `category rules follow restrictions and domestic domains before IP fallback`() {
+        // Domestic domain routing must win over categories, while service
+        // categories must win over CN addresses returned for international CDNs.
         val tags = userTrafficRuleTags(true)
-
-        val lastDirect = tags.indexOfLast { it == "direct" }
+        val firstDirect = tags.indexOfFirst { it == "direct" }
         val firstCategory = tags.indexOfFirst { it.startsWith("cat-") }
-        val firstBlocked = tags.indexOfFirst { it == "blocked" }
+        val lastCategory = tags.indexOfLast { it.startsWith("cat-") }
+        val lastBlocked = tags.indexOfLast { it == "blocked" }
+        val lastDirect = tags.indexOfLast { it == "direct" }
+        assertTrue("categories must follow domestic domain routing", firstDirect in 0 until firstCategory)
+        assertTrue("categories must follow restrictions", lastBlocked in 0 until firstCategory)
+        assertTrue("categories must precede the IP fallback", lastCategory in firstCategory until lastDirect)
+    }
 
-        assertTrue("categories must follow the direct rules", lastDirect in 0 until firstCategory)
-        assertTrue("categories must precede the blocked rules", firstBlocked > firstCategory)
+    @Test
+    fun `explicit YouTube and X domains retain their category counters`() {
+        for (mode in ProxyMode.entries) {
+            val rules = json.parseToJsonElement(XrayConfigGenerator.generate(profile, mode, true))
+                .jsonObject.getValue("routing").jsonObject.getValue("rules").jsonArray.map { it.jsonObject }
+            val video = rules.single { it.getValue("outboundTag").jsonPrimitive.content == "cat-video" }
+                .getValue("domain").jsonArray.map { it.jsonPrimitive.content }
+            val social = rules.single { it.getValue("outboundTag").jsonPrimitive.content == "cat-social" }
+                .getValue("domain").jsonArray.map { it.jsonPrimitive.content }
+            val messaging = rules.single { it.getValue("outboundTag").jsonPrimitive.content == "cat-messaging" }
+                .getValue("domain").jsonArray.map { it.jsonPrimitive.content }
+            assertTrue(mode.name, video.containsAll(listOf("geosite:youtube", "domain:youtube.com",
+                "domain:youtu.be", "domain:ytimg.com", "domain:googlevideo.com")))
+            assertTrue(mode.name, social.containsAll(listOf("geosite:twitter", "domain:x.com",
+                "domain:twitter.com", "domain:twimg.com", "domain:t.co")))
+            assertEquals(mode.name, video.size, video.distinct().size)
+            assertEquals(mode.name, social.size, social.distinct().size)
+            assertEquals(mode.name, ServiceCategories.ROUTED.single { it.tag == "cat-messaging" }.geosites,
+                messaging)
+        }
     }
 }

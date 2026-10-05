@@ -23,12 +23,17 @@ internal enum class TileAction {
     OPEN_APP,
 
     CONNECT,
+
+    /** Ask for VPN consent in the app, then continue connecting. */
+    REQUEST_CONNECT,
+
+    RETRY,
     STOP,
 }
 
 internal fun tileVisualFor(appState: AppState): TileVisual = when (appState) {
-    // Nothing to switch on until a pairing code has been entered.
-    AppState.UNBOUND -> TileVisual.UNAVAILABLE
+    // Keep the tile clickable so it can open the app for pairing.
+    AppState.UNBOUND -> TileVisual.INACTIVE
     // The platform has no "busy" tile state. Showing CONNECTING as active is
     // the honest half-truth: the user asked for on, and on is what it is
     // heading for. Showing it as off would read as "the tap did nothing".
@@ -39,18 +44,24 @@ internal fun tileVisualFor(appState: AppState): TileVisual = when (appState) {
 /**
  * [vpnPermissionGranted] decides whether connecting can happen from the tile
  * at all. The system's VPN consent dialog cannot be raised from the quick
- * settings shade, so without consent the only honest action is to open the
- * app and let the normal flow ask for it.
+ * settings shade, so without consent the app must ask for it and continue the
+ * requested connection there. A blocking hold still needs an explicit choice
+ * in the app rather than a retry from the shade.
  */
-internal fun tileActionFor(appState: AppState, vpnPermissionGranted: Boolean): TileAction =
+internal fun tileActionFor(
+    appState: AppState,
+    vpnPermissionGranted: Boolean,
+    trafficBlocked: Boolean = false,
+): TileAction =
     when (appState) {
         AppState.UNBOUND -> TileAction.OPEN_APP
         AppState.CONNECTED -> TileAction.STOP
-        // A failure may be a kill-switch hold, which must not be released by
-        // a stray tap in the shade, and may need an explanation the tile has
-        // no room for. Both belong on a screen.
-        AppState.ERROR -> TileAction.OPEN_APP
+        AppState.ERROR -> when {
+            trafficBlocked -> TileAction.OPEN_APP
+            vpnPermissionGranted -> TileAction.RETRY
+            else -> TileAction.REQUEST_CONNECT
+        }
         AppState.DISCONNECTED ->
-            if (vpnPermissionGranted) TileAction.CONNECT else TileAction.OPEN_APP
+            if (vpnPermissionGranted) TileAction.CONNECT else TileAction.REQUEST_CONNECT
         AppState.CONNECTING, AppState.DISCONNECTING -> TileAction.NONE
     }

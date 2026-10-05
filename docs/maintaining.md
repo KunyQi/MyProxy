@@ -34,6 +34,8 @@ python scripts/release_verify.py check --require-configured
 
 ## 安装包与源代码
 
+私有管理后台提供签名清单、安装包上传与 release 指派向导，操作及首次公钥配置见 [图形化发布与指派](release-publishing.md)。
+
 Windows 的打包入口是 `python scripts/package_delivery.py`；预检使用 `--preflight`。Linux 使用 `python scripts/package_linux.py --preflight` 和 `--build --rid linux-x64`。两者携带公开说明、MIT 与第三方许可目录。Windows 产物需要 .NET 8 Desktop Runtime；Linux 包的 CLI 与 GUI 共享自包含运行时。
 
 Android Release 默认未签名；使用自己的密钥签名，验证包内 assets/myproxy-licenses/ 与实际源码版本一致。原生库修改与自行签名安装见 [Android 指南](android-core-rebuild.md)。所有平台说明清楚签名状态、支持架构、版本、摘要和已验证范围。

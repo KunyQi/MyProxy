@@ -59,6 +59,8 @@ public sealed class LinuxProxyServiceTests
         platform.SetGnomeExternally($"{GnomeProxyCommands.Schema}.http", "port", "3128");
         platform.SetGnomeExternally(GnomeProxyCommands.Schema, "mode", "'manual'");
         platform.SetGnomeExternally(GnomeProxyCommands.Schema, "autoconfig-url", "'http://wpad/wpad.dat'");
+        const string originalIgnoreHosts = "['corp.example', 'fd12:3456::/48', 'fe80::/64']";
+        platform.SetGnomeExternally(GnomeProxyCommands.Schema, "ignore-hosts", originalIgnoreHosts);
 
         proxy.CaptureCurrentSettings();
         proxy.EnableAsync("127.0.0.1", 10809, CancellationToken.None).GetAwaiter().GetResult();
@@ -76,6 +78,7 @@ public sealed class LinuxProxyServiceTests
         Assert.AreEqual(
             "'http://wpad/wpad.dat'",
             platform.GetGnome(GnomeProxyCommands.Schema, "autoconfig-url"));
+        Assert.AreEqual(originalIgnoreHosts, platform.GetGnome(GnomeProxyCommands.Schema, "ignore-hosts"));
 
         // 证据只在恢复成功之后才允许消失。
         Assert.IsFalse(File.Exists(Path.Combine(storage.RuntimeDir, "proxy-applied.marker")));
@@ -349,6 +352,23 @@ public sealed class LinuxProxyServiceTests
         Assert.IsFalse(
             assignments.Any(line => line.Contains("socks5://", StringComparison.Ordinal)),
             "不该出现 socks5:// 指向本地 http 入站");
+
+        // 两份环境文件使用等价的整字节 IPv6 前缀；桌面保留简洁的原始 CIDR。
+        string expectedNoProxy = "localhost,127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,fc00::/8,fd00::/8,"
+            + string.Join(',', Enumerable.Range(0xfe80, 64).Select(prefix => $"{prefix:x4}::/16"));
+        CollectionAssert.Contains(assignments, "no_proxy=" + expectedNoProxy);
+        CollectionAssert.Contains(assignments, "NO_PROXY=" + expectedNoProxy);
+        Assert.AreEqual(contents, platform.ReadEnvironmentFile(shell));
+        var gnomeValues = new Dictionary<string, string>
+        {
+            [GnomeProxyCommands.Key(GnomeProxyCommands.Schema, "ignore-hosts")] =
+                platform.GetGnome(GnomeProxyCommands.Schema, "ignore-hosts")
+        };
+        CollectionAssert.AreEqual(new[]
+        {
+            "localhost", "127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12",
+            "192.168.0.0/16", "169.254.0.0/16", "fc00::/7", "fe80::/10"
+        }, GnomeProxyCommands.Parse(gnomeValues).IgnoreHosts.ToArray());
 
         proxy.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
 

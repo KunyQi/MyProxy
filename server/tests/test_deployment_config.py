@@ -105,6 +105,41 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertEqual(settings.server_port, 8443)
         self.assertEqual(self.settings(MYPROXY_SERVER_HOST="").server_host, "api.example.com")
 
+    def test_release_download_origin_defaults_to_empty_and_keeps_api_unchanged(self):
+        for overrides in ({}, {"MYPROXY_RELEASE_ARTIFACT_ORIGIN": ""}):
+            with self.subTest(overrides=overrides):
+                settings = self.settings("https://203.0.113.20:820", **overrides)
+                self.assertEqual(settings.release_artifact_origin, "")
+                self.assertEqual(settings.api_base_url, "https://203.0.113.20:820")
+                self.assertEqual(settings.api_port, 820)
+
+    def test_release_download_origin_is_independent_and_accepts_https_origins(self):
+        for origin in ("https://downloads.example.com:8443/", "https://[2001:db8::2]:8443"):
+            with self.subTest(origin=origin):
+                settings = self.settings(
+                    "https://203.0.113.20:820", MYPROXY_RELEASE_ARTIFACT_ORIGIN=origin,
+                )
+                self.assertEqual(settings.release_artifact_origin, origin.removesuffix("/"))
+                self.assertEqual(settings.api_base_url, "https://203.0.113.20:820")
+                self.assertEqual(settings.api_port, 820)
+                self.assertEqual(settings.server_host, "203.0.113.20")
+                self.assertEqual(settings.connectivity_check_urls, ("https://203.0.113.20:820/connectivity-check",))
+
+    def test_release_download_origin_rejects_non_origin_and_placeholder_values(self):
+        for origin in (
+            "http://downloads.example.com:8443", "https://u@downloads.example.com:8443",
+            "https://u:p@downloads.example.com:8443", "https://downloads.example.com/client/releases",
+            "https://downloads.example.com//", "https://downloads.example.com?", "https://downloads.example.com?q=1",
+            "https://downloads.example.com#", "https://downloads.example.com#fragment",
+            " https://downloads.example.com", "https://downloads.example.com\n", "https://downloads.example.com\\path",
+            "https://downloads.example.com:0", "https://downloads.example.com:65536", "https://downloads.example.com:",
+            "https://api.example.invalid:8443", "https://API.EXAMPLE.INVALID", "https://invalid",
+        ):
+            with self.subTest(origin=origin), self.assertRaisesRegex(ValueError, "MYPROXY_RELEASE_ARTIFACT_ORIGIN"):
+                self.settings(MYPROXY_RELEASE_ARTIFACT_ORIGIN=origin)
+            with self.subTest(direct_origin=origin), self.assertRaisesRegex(ValueError, "MYPROXY_RELEASE_ARTIFACT_ORIGIN"):
+                Settings(release_artifact_origin=origin)
+
     def test_example_can_be_loaded_locally_but_cannot_start_production(self):
         settings = self.settings("https://api.example.invalid")
         with self.assertRaisesRegex(ValueError, "not configured"):

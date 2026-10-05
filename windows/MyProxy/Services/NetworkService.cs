@@ -61,7 +61,7 @@ public sealed class NetworkService : INetworkService
     }
 
     public async Task<ConnectionCheckResult> CheckConnectionAsync(
-        string host, int port, string expectedEgress, CancellationToken ct)
+        string host, int port, string? knownProxyEgressIp, CancellationToken ct)
     {
         // 整轮共用一个 HttpClient：首次采样付握手成本，其后复用连接量到的才是稳态 RTT。
         using HttpClient http = CreateProxiedClient(host, port, TimeSpan.FromSeconds(TestTimeoutSeconds));
@@ -97,7 +97,7 @@ public sealed class NetworkService : INetworkService
         }
 
         // 出口判定放在延迟之后：延迟已经拿到了，回显失败不该把整次自检拖成失败。
-        EgressVerdict egress = await ResolveEgressAsync(http, expectedEgress, budget.Token, ct)
+        EgressVerdict egress = await ResolveEgressAsync(http, knownProxyEgressIp, budget.Token, ct)
             .ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
 
@@ -151,10 +151,11 @@ public sealed class NetworkService : INetworkService
     }
 
     private async Task<EgressVerdict> ResolveEgressAsync(
-        HttpClient http, string expectedEgress, CancellationToken budgetToken, CancellationToken userToken)
+        HttpClient http, string? knownProxyEgressIp, CancellationToken budgetToken, CancellationToken userToken)
     {
-        // 域名走到这里只会得到一次本地 DNS 解析的结果，而本地解析恰恰是被劫持时最先失真的东西。
-        if (!IPAddress.TryParse(expectedEgress, out IPAddress? expected))
+        // 没有独立确认的出口地址时，回显本身不能证明经过哪条路径。
+        // 尤其不能拿连接服务器的入口 IP（或一次本地 DNS 解析）代替真实出口。
+        if (!IPAddress.TryParse(knownProxyEgressIp, out IPAddress? expected))
         {
             return EgressVerdict.Unknown;
         }
@@ -169,9 +170,9 @@ public sealed class NetworkService : INetworkService
             }
 
             string body = await ReadCappedAsync(response, budgetToken).ConfigureAwait(false);
-            return TryParseTraceIp(body, out IPAddress? observed) && observed is not null
-                ? observed.Equals(expected) ? EgressVerdict.Verified : EgressVerdict.Bypassed
-                : EgressVerdict.Unknown;
+            // 不匹配也可能是同一服务器的另一地址族或其它合法出口，不足以证明绕过。
+            return TryParseTraceIp(body, out IPAddress? observed) && observed is not null && observed.Equals(expected)
+                ? EgressVerdict.Verified : EgressVerdict.Unknown;
         }
         catch (OperationCanceledException) when (userToken.IsCancellationRequested)
         {

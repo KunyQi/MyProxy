@@ -144,6 +144,7 @@ class PrivatePredeployTests(unittest.TestCase):
         self.assertIn("https://127.0.0.1:1820/admin/", script)
         self.assertIn("https://127.0.0.1:1820/admin/app.css", script)
         self.assertIn("https://127.0.0.1:1820/admin/app.js", script)
+        self.assertIn("https://127.0.0.1:1820/admin/release-signing.js", script)
         self.assertIn("Content-Security-Policy", script)
         self.assertIn("[ \"$admin_status\" != 401 ]", script)
         self.assertIn("capture_public_listeners", script)

@@ -1,11 +1,13 @@
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 import java.net.URI
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.Sync
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -138,8 +140,14 @@ val missingAndroidLicenseAssets = requiredAndroidLicenseAssets.distinct().filter
 require(missingAndroidLicenseAssets.isEmpty()) {
     "Android license/source package inputs are missing: ${missingAndroidLicenseAssets.joinToString()}"
 }
+abstract class PrepareMyProxyLicenseAssets : Sync() {
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+}
+
 val generatedLicenseAssets = layout.buildDirectory.dir("generated/myproxyLicenseAssets")
-val prepareMyProxyLicenseAssets = tasks.register<Sync>("prepareMyProxyLicenseAssets") {
+val prepareMyProxyLicenseAssets = tasks.register<PrepareMyProxyLicenseAssets>("prepareMyProxyLicenseAssets") {
+    outputDirectory.set(generatedLicenseAssets)
     from(repositoryRoot) {
         include(
             "LICENSE",
@@ -156,7 +164,7 @@ val prepareMyProxyLicenseAssets = tasks.register<Sync>("prepareMyProxyLicenseAss
         )
         into("myproxy-licenses")
     }
-    into(generatedLicenseAssets)
+    into(outputDirectory)
     doLast {
         val missingOutputs = requiredAndroidLicenseAssets.distinct().filterNot {
             generatedLicenseAssets.get().file("myproxy-licenses/$it").asFile.isFile
@@ -169,7 +177,8 @@ val prepareMyProxyLicenseAssets = tasks.register<Sync>("prepareMyProxyLicenseAss
 
 android {
     namespace = "com.myproxy.android"
-    compileSdk = 35
+    compileSdk = 37
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "com.myproxy.android"
@@ -180,9 +189,11 @@ android {
         buildConfigField("String", "DEPLOYMENT_API_BASE_URL", "\"${deploymentApiBaseUrl.trimEnd('/')}\"")
         buildConfigField("String[]", "DEPLOYMENT_CONNECTIVITY_CHECK_URLS",
             "new String[] { ${deploymentConnectivityUrls.joinToString(", ") { JsonOutput.toJson(it) }} }")
+    }
 
-        // 只保留英文与中文资源，丢掉 androidx/compose 带的其余语言字符串。
-        resourceConfigurations += setOf("en", "zh")
+    // 只保留英文与中文资源，丢掉 androidx/compose 带的其余语言字符串。
+    androidResources {
+        localeFilters += listOf("en", "zh")
     }
 
     buildTypes {
@@ -264,19 +275,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
     }
 }
 
-android.sourceSets.getByName("main").assets.srcDir(generatedLicenseAssets)
-tasks.named("preBuild").configure {
-    dependsOn(prepareMyProxyLicenseAssets)
+// AGP 9 uses built-in Kotlin; the Compose plugin supplies the matching KGP version.
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+    }
+}
+
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(prepareMyProxyLicenseAssets) {
+        it.outputDirectory
+    }
 }
 
 dependencies {

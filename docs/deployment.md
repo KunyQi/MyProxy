@@ -4,7 +4,7 @@
 
 ## 1. 准备依赖
 
-安装 global.json 指定的 .NET SDK 8.0.424 和 Python 3.12+。Android 构建需要 JDK 17、Android SDK 平台 35 与 Build Tools 35.0.0，设置本机的 JAVA_HOME 和 ANDROID_HOME。SDK、缓存与密钥不纳入源码。
+安装 global.json 指定的 .NET SDK 9.0.318、.NET 8 运行时和 Python 3.12+。客户端仍以 .NET 8 为运行目标；新版 SDK 用于 Avalonia 12 的 XAML 生成器。Android 构建需要 JDK 17、Android SDK 平台 35 与 Build Tools 35.0.0，设置本机的 JAVA_HOME 和 ANDROID_HOME。SDK、缓存与密钥不纳入源码。
 
 ## 2. 设置统一入口
 

@@ -50,6 +50,7 @@ data class DnsConfig(
     val servers: List<DnsServer> = emptyList(),
     @SerialName("queryStrategy") val queryStrategy: String = "UseIP",
     @SerialName("disableCache") val disableCache: Boolean = false,
+    @SerialName("enableParallelQuery") val enableParallelQuery: Boolean = true,
 )
 
 @Serializable(with = DnsServerSerializer::class)
@@ -59,6 +60,7 @@ sealed interface DnsServer {
         val address: String,
         val domains: List<String> = emptyList(),
         @SerialName("expectIPs") val expectIPs: List<String> = emptyList(),
+        @SerialName("skipFallback") val skipFallback: Boolean = false,
     ) : DnsServer
 
     @Serializable

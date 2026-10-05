@@ -203,17 +203,45 @@ ADMIN_HTML = """<!doctype html>
         <div class="section-heading">
           <div>
             <h2 id="releases-title">发布指派</h2>
-            <p class="muted">登记已签名的 release，并按设备或用户指定版本与开关。</p>
+            <p class="muted">选择本地安装包，在浏览器签署发布清单，再上传和指派。</p>
           </div>
         </div>
 
-        <p class="callout">
-          服务端<strong>只验签不签名</strong>：这台机器上没有私钥，签名在发布流程里离线完成。
-          因此即使这个后台的令牌泄漏，也只能登记一份已经带着可信密钥签名的 manifest——
-          这正是「Control Plane 不具备下发任意可执行文件」成立的原因。
-          未配置签名公钥时本页的登记一律被拒绝。
-        </p>
+        <div class="release-wizard">
+          <h3>发布新版本</h3>
+          <p class="muted">Windows 请选择包含已签名 MyProxy.exe 的 ZIP，Android 请选择已签名 APK，Linux 请选择 tar.gz 包。</p>
+          <p id="wizard-environment" class="callout" role="status"></p>
+          <form id="release-wizard-form" class="wizard-fields">
+            <div class="field wizard-wide"><label for="wizard-file">本地安装包</label><input id="wizard-file" type="file" accept=".zip,.apk,.tar.gz,.tgz" required></div>
+            <div class="field"><label for="wizard-platform">平台</label><select id="wizard-platform"><option value="windows">Windows</option><option value="android">Android</option><option value="linux">Linux</option></select></div>
+            <div class="field"><label for="wizard-version">版本</label><input id="wizard-version" required pattern="[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.\\-]+)?(?:\\+[0-9A-Za-z.\\-]+)?" placeholder="0.2.0 或 0.2.0-beta.1" autocomplete="off"></div>
+            <div class="field"><label for="wizard-channel">通道</label><select id="wizard-channel"><option value="stable">稳定版</option><option value="beta">测试版</option></select></div>
+            <div class="field"><label for="wizard-minimum">最低可升级版本（可选）</label><input id="wizard-minimum" pattern="[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.\\-]+)?(?:\\+[0-9A-Za-z.\\-]+)?" placeholder="例如 0.1.0" autocomplete="off"></div>
+            <div id="wizard-signer-field" class="field wizard-wide"><label for="wizard-subject">安装包签名证书 SHA-256</label><input id="wizard-subject" class="mono" maxlength="64" pattern="[0-9a-fA-F]{64}" autocomplete="off"><p id="wizard-signer-help" class="caption"></p></div>
+            <label class="checkbox wizard-wide"><input id="wizard-mandatory" type="checkbox">标记为必须更新</label>
+            <div class="field"><label for="wizard-key-id">清单签名 keyId</label><input id="wizard-key-id" maxlength="64" required placeholder="rel-2026a" autocomplete="off"></div>
+            <div class="field"><label for="wizard-key-file">发布私钥（PKCS8 PEM / DER）</label><input id="wizard-key-file" type="file" accept=".pem,.der,.key"></div>
+            <div class="wizard-wide wizard-actions"><button id="wizard-generate-key" class="secondary" type="button">生成本地 Ed25519 密钥</button><button id="wizard-backup-key" class="secondary" type="button" disabled>下载私钥备份</button></div>
+            <div class="field wizard-wide"><label for="wizard-public-key">发布公钥（配置到服务端与客户端）</label><input id="wizard-public-key" class="mono" readonly placeholder="选择私钥或生成后显示"><p id="wizard-key-status" class="caption" role="status">私钥只留在当前浏览器内存；不会上传。刷新或退出会清除它。</p></div>
+            <details class="wizard-wide"><summary>公钥配置说明</summary><p class="caption">在服务的 systemd 覆盖配置（drop-in）中设置 MYPROXY_RELEASE_SIGNING_KEYS，使用下面的 keyId:公钥；各客户端也需嵌入同一发布公钥。保存配置并重启服务后，点击「刷新」。服务端只能验签；私钥由发布者保存。</p><input id="wizard-key-config" class="mono" readonly aria-label="发布公钥配置"><div class="wizard-actions"><button id="wizard-copy-key" class="secondary" type="button">复制发布公钥配置</button></div><label for="wizard-linux-key-config">Linux 产物信任配置（原始公钥 SHA-256:公钥）</label><input id="wizard-linux-key-config" class="mono" readonly><div class="wizard-actions"><button id="wizard-copy-linux-key" class="secondary" type="button">复制 Linux 产物公钥配置</button></div><p class="caption">Linux 客户端还需信任此产物公钥。登记、发布和指派只管理服务端发布状态；客户端收到通知与安装取决于对应版本是否接入更新流程。</p></details>
+            <div class="field wizard-wide"><label for="wizard-external-url">外部下载地址（仅在不上传到此服务器时使用）</label><input id="wizard-external-url" type="url" placeholder="https://releases.example/MyProxy.zip" autocomplete="off"></div>
+            <label class="checkbox wizard-wide"><input id="wizard-managed" type="checkbox" checked>上传到此服务器的发布存储</label>
+            <div class="field"><label for="wizard-scope">发布后的指派范围</label><select id="wizard-scope"><option value="none">仅发布，暂不指派</option><option value="device">指定设备</option><option value="user">指定用户</option><option value="platform">此平台全部设备</option></select></div>
+            <div class="field"><label for="wizard-target">指派目标</label><select id="wizard-target"><option value="">无需目标</option></select></div>
+            <div class="field wizard-wide"><label for="wizard-note">备注（可选）</label><input id="wizard-note" maxlength="256" autocomplete="off"></div>
+            <div class="wizard-wide wizard-actions"><button id="wizard-prepare" class="secondary" type="submit">计算并签署，查看发布摘要</button><button id="wizard-reset" class="secondary" type="button">开始另一个发布</button></div>
+          </form>
+          <div id="wizard-review" hidden>
+            <h3>发布摘要</h3>
+            <dl id="wizard-summary" class="summary-list"></dl>
+            <details><summary>查看已签名清单</summary><pre id="wizard-manifest" class="manifest-preview mono"></pre></details>
+            <p id="wizard-progress" class="callout" role="status" aria-live="polite"></p>
+            <div class="wizard-actions"><button id="wizard-export" class="secondary" type="button" disabled>导出签名清单</button><button id="wizard-publish" class="primary" type="button" disabled>上传并发布</button></div>
+          </div>
+        </div>
 
+        <details class="advanced-release"><summary>高级：手工登记已签名清单</summary>
+        <p class="caption">原样粘贴离线签名产出的 base64 清单。服务端未配置对应公钥时拒绝登记。</p>
         <form id="release-form" class="tool-form">
           <div class="field wide">
             <label for="release-manifest">manifest（base64）</label>
@@ -234,6 +262,7 @@ ADMIN_HTML = """<!doctype html>
           </div>
           <button class="primary form-action" type="submit">登记 release</button>
         </form>
+        </details>
 
         <div class="table-wrap">
           <table>
@@ -248,7 +277,7 @@ ADMIN_HTML = """<!doctype html>
           <p class="muted">
             指派只表达「谁拿哪个 release」加一张扁平开关表，<strong>不能携带 URL、脚本或命令</strong>。
             解析顺序 device → user → platform，先命中者生效；撤销一个 release 会让指向它的指派
-            向下一层回落，所以撤销就是一次全量回滚。
+            向下一层回落，并停止继续下发已撤销版本。已安装的客户端不会因此自动降级。
           </p>
           <form id="assignment-form" class="tool-form">
             <div class="field">
@@ -372,6 +401,7 @@ ADMIN_HTML = """<!doctype html>
     </section>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/admin/release-signing.js" defer></script>
   <script src="/admin/app.js" defer></script>
 </body>
 </html>
@@ -467,6 +497,15 @@ tbody tr:hover { background:#eeefe8; }
 .release-block+.release-block { margin-top:30px; border-top:1px solid var(--border); }
 .release-form { display:grid; grid-template-columns:minmax(150px,.6fr) minmax(220px,1.4fr); gap:20px; align-items:end; }
 .release-form button { justify-self:start; }
+.release-wizard { border-top:1px solid var(--border); padding-top:24px; margin-bottom:40px; }
+.wizard-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin:24px 0; }
+.wizard-wide { grid-column:1/-1; }
+.wizard-actions { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0; }
+.wizard-fields input[type=file] { font-size:12px; }
+.wizard-fields input[type=file]::file-selector-button { font:inherit; border:0; border-right:1px solid var(--border); padding:5px 10px 5px 0; margin-right:12px; color:var(--text); background:transparent; cursor:pointer; }
+.manifest-preview { white-space:pre-wrap; overflow-wrap:anywhere; padding:16px; font-size:12px; border:1px solid var(--border); }
+.advanced-release { margin:32px 0; }
+summary { cursor:pointer; font-size:13px; margin-bottom:12px; }
 .checkbox { display:inline-flex; align-items:center; gap:10px; min-height:40px; }
 .checkbox input { width:16px; min-height:16px; margin:0; }
 .toast { position:fixed; right:24px; bottom:24px; padding:14px 20px; max-width:calc(100% - 48px); background:#30392a; color:#fff; font-size:13px; z-index:10; }
@@ -512,6 +551,8 @@ tbody tr { transition:background-color 140ms ease; }
   .section-heading { align-items:stretch; flex-direction:column; gap:18px; }
   .summary-row { grid-template-columns:1fr; gap:7px; padding:18px 0; }
   .tool-form,.four-columns,.release-form { grid-template-columns:1fr; }
+  .wizard-fields { grid-template-columns:1fr; }
+  .wizard-actions button { flex:1 1 100%; }
   .compact-filter { grid-template-columns:auto 1fr; }
   .inline-operation,.one-time-result { flex-direction:column; align-items:stretch; }
   .form-action { width:100%; }
@@ -533,6 +574,7 @@ ADMIN_JS = r"""(() => {
     config: null,
     latest: { windows: null, android: null, linux: null },
     releases: [],
+    releaseSettings: null,
     assignments: [],
     audit: [],
     activity: [],
@@ -549,6 +591,11 @@ ADMIN_JS = r"""(() => {
   const serviceState = byId("service-state");
   const toast = byId("toast");
   let toastTimer = 0;
+  const wizard = {
+    key: null, prepared: null, snapshot: null, release: null,
+    uploaded: false, signatureUploaded: false, published: false, assigned: false,
+    busy: false, revision: 0, appliedFlags: null, flagsChanged: false,
+  };
 
   function text(element, value) {
     element.textContent = value == null ? "" : String(value);
@@ -591,18 +638,22 @@ ADMIN_JS = r"""(() => {
     appView.hidden = true;
     loginView.hidden = false;
     text(loginError, message || "");
+    clearWizard(true);
   }
 
   async function api(path, options = {}) {
     const headers = { Accept: "application/json" };
     if (state.token) headers.Authorization = `Bearer ${state.token}`;
-    if (Object.prototype.hasOwnProperty.call(options, "body")) {
+    const hasRawBody = Object.prototype.hasOwnProperty.call(options, "rawBody");
+    if (hasRawBody) {
+      headers["Content-Type"] = "application/octet-stream";
+    } else if (Object.prototype.hasOwnProperty.call(options, "body")) {
       headers["Content-Type"] = "application/json";
     }
     const response = await fetch(path, {
       method: options.method || "GET",
       headers,
-      body: Object.prototype.hasOwnProperty.call(options, "body")
+      body: hasRawBody ? options.rawBody : Object.prototype.hasOwnProperty.call(options, "body")
         ? JSON.stringify(options.body)
         : undefined,
       cache: "no-store",
@@ -622,7 +673,10 @@ ADMIN_JS = r"""(() => {
     }
     if (!response.ok) {
       const message = payload && payload.error && payload.error.message;
-      throw new Error(message || `请求失败（HTTP ${response.status}）`);
+      const error = new Error(message || `请求失败（HTTP ${response.status}）`);
+      error.status = response.status;
+      error.code = payload && payload.error && payload.error.code;
+      throw error;
     }
     return payload;
   }
@@ -961,6 +1015,364 @@ ADMIN_JS = r"""(() => {
     return [dt, dd];
   }
 
+  function releaseSigning() {
+    if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+      throw new Error("本地签名需要安全浏览器环境。请用 SSH 启动器打开 localhost，或使用可信 HTTPS 地址。");
+    }
+    if (!window.MyProxyReleaseSigning) throw new Error("发布签名组件未加载，请刷新页面。");
+    return window.MyProxyReleaseSigning;
+  }
+
+  function wizardTrusted() {
+    const settings = state.releaseSettings;
+    const keyId = wizard.snapshot ? wizard.snapshot.signingKeyId : byId("wizard-key-id").value.trim();
+    return Boolean(settings && wizard.key && Array.isArray(settings.trustedSigningKeys) &&
+      settings.trustedSigningKeys.some((entry) => entry.keyId === keyId && entry.publicKeyHex === wizard.key.publicKeyHex));
+  }
+
+  function updateWizardControls() {
+    const secure = Boolean(window.isSecureContext && window.crypto && window.crypto.subtle && window.MyProxyReleaseSigning);
+    const settings = state.releaseSettings;
+    const enabled = Boolean(settings && settings.artifactUploadEnabled);
+    text(byId("wizard-environment"), !secure
+      ? "本地签名需要安全浏览器环境。请通过 SSH 启动器打开 localhost，或使用可信 HTTPS 地址。"
+      : !settings ? "正在读取发布存储与可信公钥配置…"
+        : enabled ? `发布存储已就绪 · 单个文件上限 ${formatBytes(settings.maxArtifactBytes)}。私钥只在当前浏览器中使用。`
+          : "此服务器未启用安装包上传。可填写外部 HTTPS 下载地址，签署并导出清单，或由管理员启用发布存储。");
+    const platform = byId("wizard-platform").value;
+    byId("wizard-signer-field").hidden = platform === "linux";
+    byId("wizard-subject").required = platform !== "linux";
+    text(byId("wizard-signer-help"), platform === "android"
+      ? "填写 apksigner 输出的 APK 签名证书 SHA-256；更新须沿用原应用签名。"
+      : "填写 ZIP 根目录 MyProxy.exe 的 Authenticode 签名证书 SHA-256；请先完成安装包签名。");
+    byId("wizard-external-url").disabled = wizard.busy || Boolean(wizard.release) || byId("wizard-managed").checked;
+    byId("wizard-external-url").required = !byId("wizard-managed").checked;
+    for (const input of byId("release-wizard-form").elements) {
+      if (input.id === "wizard-reset") input.disabled = wizard.busy;
+      else if (input.id !== "wizard-external-url" && input.id !== "wizard-backup-key") {
+        input.disabled = wizard.busy || Boolean(wizard.release);
+      }
+    }
+    byId("wizard-prepare").disabled = wizard.busy || Boolean(wizard.release) || !secure || !wizard.key;
+    byId("wizard-generate-key").disabled = wizard.busy || Boolean(wizard.release) || !secure;
+    byId("wizard-key-file").disabled = wizard.busy || Boolean(wizard.release) || !secure;
+    byId("wizard-backup-key").disabled = wizard.busy || !wizard.key || !wizard.key.privateKeyPem;
+    byId("wizard-export").disabled = wizard.busy || !wizard.prepared;
+    const complete = wizard.published && (!wizard.snapshot || !wizard.snapshot.assignment || wizard.assigned);
+    byId("wizard-publish").disabled = wizard.busy || !wizard.prepared || !wizardTrusted() ||
+      (wizard.snapshot && wizard.snapshot.managed && !enabled) || complete;
+    text(byId("wizard-publish"), wizard.busy ? "正在处理…" : wizard.release
+      ? complete ? "已完成发布" : "继续发布 / 重试" : wizard.snapshot && !wizard.snapshot.managed ? "登记并发布" : "上传并发布");
+    if (wizard.key) {
+      text(byId("wizard-key-status"), wizardTrusted()
+        ? "公钥与服务端可信配置一致。私钥只在当前浏览器内存中，刷新或退出会清除。"
+        : "服务端尚未信任此 keyId 与公钥。请先配置公钥并刷新；可以先导出已签名清单。");
+    }
+  }
+
+  function refreshWizardTargets() {
+    if (wizard.release || wizard.busy) return;
+    const select = byId("wizard-target");
+    const previous = select.value;
+    const scope = byId("wizard-scope").value;
+    const platform = byId("wizard-platform").value;
+    const options = [new Option(scope === "none" || scope === "platform" ? "无需目标" : "请选择目标", "")];
+    if (scope === "user") {
+      for (const user of state.users) {
+        if (user.status === "active") options.push(new Option(user.displayName || user.username, user.id));
+      }
+    } else if (scope === "device") {
+      for (const device of state.devices) {
+        if (device.status === "active" && device.platform === platform) {
+          options.push(new Option(`${device.deviceName} · ${userName(device.userId)}`, device.id));
+        }
+      }
+    }
+    select.replaceChildren(...options);
+    if (options.some((option) => option.value === previous)) select.value = previous;
+    select.required = scope === "user" || scope === "device";
+  }
+
+  function clearWizard(clearKey = false) {
+    wizard.revision += 1;
+    wizard.prepared = null;
+    wizard.snapshot = null;
+    wizard.release = null;
+    wizard.uploaded = false;
+    wizard.signatureUploaded = false;
+    wizard.published = false;
+    wizard.assigned = false;
+    wizard.appliedFlags = null;
+    wizard.flagsChanged = false;
+    wizard.busy = false;
+    byId("wizard-review").hidden = true;
+    byId("wizard-summary").replaceChildren();
+    text(byId("wizard-manifest"), "");
+    text(byId("wizard-progress"), "");
+    if (clearKey) {
+      wizard.key = null;
+      byId("wizard-key-file").value = "";
+      byId("wizard-file").value = "";
+      byId("wizard-public-key").value = "";
+      byId("wizard-key-config").value = "";
+      byId("wizard-linux-key-config").value = "";
+      text(byId("wizard-key-status"), "私钥只留在当前浏览器内存；不会上传。刷新或退出会清除它。");
+    }
+    refreshWizardTargets();
+    updateWizardControls();
+  }
+
+  function invalidateWizard() {
+    if (wizard.busy || wizard.release) return;
+    clearWizard();
+    byId("wizard-key-config").value = wizard.key
+      ? `${byId("wizard-key-id").value.trim()}:${wizard.key.publicKeyHex}` : "";
+  }
+
+  async function selectWizardKey(action) {
+    if (wizard.busy || wizard.release) return;
+    const helper = releaseSigning();
+    clearWizard();
+    wizard.key = null;
+    byId("wizard-public-key").value = "";
+    byId("wizard-key-config").value = "";
+    byId("wizard-linux-key-config").value = "";
+    const revision = wizard.revision;
+    wizard.busy = true;
+    updateWizardControls();
+    text(byId("wizard-key-status"), "正在本地读取发布密钥…");
+    try {
+      const key = await action(helper);
+      const bytes = new Uint8Array(key.publicKeyHex.match(/../g).map((byte) => parseInt(byte, 16)));
+      const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+      const subject = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      if (revision !== wizard.revision) return;
+      wizard.key = key;
+      if (key.privateKeyPem) byId("wizard-key-file").value = "";
+      byId("wizard-public-key").value = key.publicKeyHex;
+      byId("wizard-key-config").value = `${byId("wizard-key-id").value.trim()}:${key.publicKeyHex}`;
+      byId("wizard-linux-key-config").value = `${subject}:${key.publicKeyHex}`;
+      showPageMessage(key.privateKeyPem ? "密钥已在本地生成，请下载私钥备份。" : "发布密钥已在本地读取。");
+    } catch (error) {
+      text(byId("wizard-key-status"), `密钥未加载。${errorMessage(error)}`);
+      throw error;
+    } finally {
+      if (revision === wizard.revision) { wizard.busy = false; updateWizardControls(); }
+    }
+  }
+
+  function saveDownload(name, data, type) {
+    const url = URL.createObjectURL(new Blob([data], { type }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function existingAssignmentFlags(assignments, assignment) {
+    const existing = assignments.find((item) => item.scope === assignment.scope &&
+      (item.targetId || "") === assignment.targetId && item.platform === assignment.platform);
+    if (!existing || existing.featureFlags == null || existing.featureFlags === "") return {};
+    const flags = typeof existing.featureFlags === "string"
+      ? JSON.parse(existing.featureFlags) : existing.featureFlags;
+    if (!flags || typeof flags !== "object" || Array.isArray(flags)) {
+      throw new Error("现有功能开关格式无效，未保存指派。");
+    }
+    return { ...flags };
+  }
+
+  async function prepareWizard() {
+    if (wizard.busy || wizard.release) return;
+    const form = byId("release-wizard-form");
+    if (!form.reportValidity()) return;
+    const helper = releaseSigning();
+    if (!wizard.key) throw new Error("请先选择私钥或生成本地发布密钥。");
+    const file = byId("wizard-file").files[0];
+    if (!file || !file.size) throw new Error("请选择非空安装包。");
+    const platform = byId("wizard-platform").value;
+    const extensions = { windows: /\.zip$/i, android: /\.apk$/i, linux: /\.(tar\.gz|tgz)$/i };
+    if (!extensions[platform].test(file.name)) throw new Error("安装包扩展名与所选平台不一致。");
+    const scope = byId("wizard-scope").value;
+    const targetId = byId("wizard-target").value;
+    if ((scope === "user" || scope === "device") && !targetId) throw new Error("请选择指派目标。");
+    const managed = byId("wizard-managed").checked;
+    const settings = state.releaseSettings;
+    if (managed && (!settings || !settings.artifactUploadEnabled)) throw new Error("服务器尚未启用上传；可取消上传并填写外部下载地址。");
+    if (managed && file.size > settings.maxArtifactBytes) throw new Error("安装包超过服务器允许的文件大小。");
+    const snapshot = {
+      file, platform, managed, version: byId("wizard-version").value.trim(),
+      channel: byId("wizard-channel").value, mandatory: byId("wizard-mandatory").checked,
+      signingKeyId: byId("wizard-key-id").value.trim(),
+      minimumVersion: byId("wizard-minimum").value.trim(),
+      subjectSha256: byId("wizard-subject").value.trim().toLowerCase(),
+      note: byId("wizard-note").value,
+      assignment: scope === "none" ? null : { scope, targetId: scope === "platform" ? "" : targetId, platform },
+    };
+    if (snapshot.assignment) {
+      snapshot.assignment.featureFlags = existingAssignmentFlags(state.assignments, snapshot.assignment);
+    }
+    const revision = ++wizard.revision;
+    wizard.busy = true;
+    updateWizardControls();
+    showPageMessage("正在本地计算 SHA-256 并签署清单…");
+    try {
+      const hash = await helper.hashFile(file);
+      const extension = managed ? settings.artifactExtensions[platform] : "";
+      const artifactUrl = managed
+        ? `${settings.artifactBaseUrl.replace(/\/$/, "")}/${hash}/myproxy-${platform}-${snapshot.version}.${extension}`
+        : byId("wizard-external-url").value.trim();
+      const prepared = await helper.prepare({
+        key: wizard.key.key, signingKeyId: snapshot.signingKeyId, file,
+        platform, version: snapshot.version, channel: snapshot.channel, mandatory: snapshot.mandatory,
+        minimumVersion: snapshot.minimumVersion, subjectSha256: snapshot.subjectSha256, artifactUrl,
+      });
+      if (revision !== wizard.revision) return;
+      wizard.prepared = prepared;
+      wizard.snapshot = snapshot;
+      byId("wizard-review").hidden = false;
+      const targetLabel = !snapshot.assignment ? "仅发布，暂不指派" : scope === "platform"
+        ? `${platform} 全部设备` : scope === "user" ? `用户：${userName(targetId)}`
+          : `设备：${byId("wizard-target").selectedOptions[0].textContent} (${targetId})`;
+      const rows = [
+        ["版本 / 平台 / 通道", `${snapshot.version} / ${platform} / ${snapshot.channel}`],
+        ["安装包", `${file.name} · ${formatBytes(prepared.artifactSize)} (${prepared.artifactSize} 字节)`],
+        ["SHA-256", prepared.artifactSha256], ["下载地址", artifactUrl],
+        ["签名 keyId", snapshot.signingKeyId], ["公钥", wizard.key.publicKeyHex],
+        ["更新要求", snapshot.mandatory ? "必须更新" : "可选更新"],
+        ["指派目标", targetLabel],
+      ];
+      if (snapshot.assignment) rows.push(["保留现有功能开关", JSON.stringify(snapshot.assignment.featureFlags)]);
+      byId("wizard-summary").replaceChildren(...rows.map(([label, value]) => {
+        const row = element("div", "summary-row");
+        row.append(element("dt", "", label), element("dd", "", value));
+        return row;
+      }));
+      text(byId("wizard-manifest"), JSON.stringify(prepared.manifestDocument, null, 2));
+      text(byId("wizard-progress"), "清单已在本地签署，尚未上传或登记。请核对上述版本、文件与目标，再点击发布；也可先导出清单。");
+      showPageMessage("发布摘要已就绪");
+    } finally {
+      if (revision === wizard.revision) { wizard.busy = false; updateWizardControls(); }
+    }
+  }
+
+  function sameWizardRelease(release) {
+    const snapshot = wizard.snapshot;
+    const document = wizard.prepared.manifestDocument;
+    return release.platform === snapshot.platform && release.version === snapshot.version &&
+      release.channel === snapshot.channel && release.artifactSha256 === wizard.prepared.artifactSha256 &&
+      release.artifactSize === wizard.prepared.artifactSize && release.artifactUrl === document.artifact.url &&
+      release.signingKeyId === snapshot.signingKeyId && release.mandatory === snapshot.mandatory &&
+      (release.minimumVersion || "") === snapshot.minimumVersion &&
+      release.platformSignatureSubjectSha256 === document.artifact.signature.subjectSha256;
+  }
+
+  async function synchronizeWizardRelease() {
+    const snapshot = wizard.snapshot;
+    const listing = await api(`/api/admin/release?platform=${encodeURIComponent(snapshot.platform)}`);
+    if (snapshot !== wizard.snapshot) return false;
+    const existing = (listing.releases || []).find((release) => release.version === wizard.snapshot.version);
+    if (!existing) return false;
+    if (!sameWizardRelease(existing) || existing.status === "revoked") {
+      throw new Error("此平台版本已登记为另一份清单或已撤销。请使用新版本号，不能覆盖既有发布。");
+    }
+    wizard.release = existing;
+    wizard.uploaded = Boolean(existing.artifactReady);
+    wizard.signatureUploaded = Boolean(existing.platformSignatureReady);
+    wizard.published = existing.status === "published";
+    return true;
+  }
+
+  async function publishWizard() {
+    if (wizard.busy || !wizard.prepared || !wizard.snapshot) return;
+    if (!wizardTrusted()) throw new Error("服务端尚未信任当前签名公钥，请完成公钥配置并刷新。");
+    if (wizard.snapshot.managed && !state.releaseSettings.artifactUploadEnabled) throw new Error("服务器未启用安装包上传。");
+    const revision = wizard.revision;
+    const progress = (value) => { if (revision === wizard.revision) text(byId("wizard-progress"), value); };
+    wizard.busy = true;
+    updateWizardControls();
+    try {
+      progress("正在核对并登记草稿…");
+      if (!wizard.release) {
+        const found = await synchronizeWizardRelease();
+        if (revision !== wizard.revision) return;
+        if (!found) {
+          const prepared = wizard.prepared;
+          try {
+            const created = await api("/api/admin/release", { method: "POST", body: {
+              manifest: prepared.manifest, signature: prepared.signature,
+              signingKeyId: prepared.signingKeyId, note: wizard.snapshot.note,
+            } });
+            if (revision !== wizard.revision) return;
+            wizard.release = created;
+          } catch (error) {
+            // Registration may have succeeded before a connection was lost.
+            // Re-query the immutable version before offering a safe retry.
+            if (!await synchronizeWizardRelease()) throw error;
+          }
+        }
+      } else {
+        await synchronizeWizardRelease();
+      }
+      if (revision !== wizard.revision) return;
+      const id = encodeURIComponent(wizard.release.id);
+      if (!wizard.published && wizard.snapshot.managed) {
+        if (!wizard.uploaded) {
+          progress(`草稿 ${wizard.release.id} 已登记，正在上传安装包…`);
+          const uploaded = await api(`/api/admin/release/${id}/artifact`, { method: "POST", rawBody: wizard.snapshot.file });
+          if (revision !== wizard.revision) return;
+          wizard.uploaded = Boolean(uploaded.artifactReady);
+          if (!wizard.uploaded) throw new Error("服务器未确认安装包就绪，请重试。");
+        }
+        if (wizard.snapshot.platform === "linux" && !wizard.signatureUploaded) {
+          progress("安装包已上传，正在上传 Linux 产物签名…");
+          const signed = await api(`/api/admin/release/${id}/artifact-signature`, {
+            method: "POST", rawBody: releaseSigning().decodeBase64(wizard.prepared.artifactSignature),
+          });
+          if (revision !== wizard.revision) return;
+          wizard.signatureUploaded = Boolean(signed.platformSignatureReady);
+          if (!wizard.signatureUploaded) throw new Error("服务器未确认 Linux 产物签名就绪，请重试。");
+        }
+      }
+      if (revision !== wizard.revision) return;
+      if (!wizard.published) {
+        progress("安装包已就绪，正在发布版本…");
+        await api(`/api/admin/release/${id}/publish`, { method: "POST" });
+        if (revision !== wizard.revision) return;
+        wizard.published = true;
+      }
+      if (revision !== wizard.revision) return;
+      if (wizard.snapshot.assignment && !wizard.assigned) {
+        progress("版本已发布，正在保存指派…");
+        const assignments = await api("/api/admin/assignment");
+        if (revision !== wizard.revision) return;
+        // The wizard changes the version pin only. Re-read the current switches
+        // just before saving so a separate settings edit is not overwritten.
+        const latestFlags = existingAssignmentFlags(assignments.assignments || [], wizard.snapshot.assignment);
+        await api("/api/admin/assignment", { method: "POST", body: {
+          ...wizard.snapshot.assignment, featureFlags: latestFlags,
+          releaseId: wizard.release.id, note: wizard.snapshot.note,
+        } });
+        if (revision !== wizard.revision) return;
+        wizard.assigned = true;
+        wizard.appliedFlags = latestFlags;
+        wizard.flagsChanged = JSON.stringify(latestFlags) !== JSON.stringify(wizard.snapshot.assignment.featureFlags);
+      }
+      progress(`版本 ${wizard.snapshot.version} 已发布${wizard.assigned ? "并完成指派" : "，暂未指派"}。release：${wizard.release.id}` +
+        (wizard.flagsChanged ? `。指派保留了保存时最新的功能开关：${JSON.stringify(wizard.appliedFlags)}` : ""));
+      await refreshAll();
+      showToast("发布已完成");
+    } catch (error) {
+      const stage = wizard.published ? "版本已发布" : wizard.release ? `草稿 ${wizard.release.id} 已登记` : "草稿状态尚未确认";
+      progress(`${stage}。${errorMessage(error)} 已完成的阶段会保留，点击「继续发布 / 重试」可继续。`);
+      throw error;
+    } finally {
+      if (revision === wizard.revision) { wizard.busy = false; updateWizardControls(); }
+    }
+  }
+
   function refreshAssignmentTargets() {
     const scope = byId("assignment-scope").value;
     const select = byId("assignment-target");
@@ -1004,6 +1416,8 @@ ADMIN_JS = r"""(() => {
     renderUsage();
     refreshAssignmentTargets();
     refreshUsageDevices();
+    refreshWizardTargets();
+    updateWizardControls();
   }
 
   function setView(name) {
@@ -1025,7 +1439,7 @@ ADMIN_JS = r"""(() => {
     text(serviceState, "正在检查");
     const [
       health, users, bindings, devices, config, windows, android, linux,
-      releases, assignments, audit, activity,
+      releases, assignments, audit, activity, releaseSettings,
     ] = await Promise.all([
       api("/healthz"),
       api("/api/admin/user"),
@@ -1039,8 +1453,10 @@ ADMIN_JS = r"""(() => {
       api("/api/admin/assignment"),
       api("/api/admin/release-audit?limit=50"),
       api("/api/admin/activity"),
+      api("/api/admin/release-settings"),
     ]);
     state.releases = Array.isArray(releases.releases) ? releases.releases : [];
+    state.releaseSettings = releaseSettings;
     state.assignments = Array.isArray(assignments.assignments) ? assignments.assignments : [];
     state.audit = Array.isArray(audit.entries) ? audit.entries : [];
     state.activity = Array.isArray(activity.devices) ? activity.devices : [];
@@ -1209,6 +1625,67 @@ ADMIN_JS = r"""(() => {
   byId("device-filter").addEventListener("change", renderDevices);
 
   byId("assignment-scope").addEventListener("change", refreshAssignmentTargets);
+
+  byId("release-wizard-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try { await prepareWizard(); }
+    catch (error) { showPageMessage(errorMessage(error), true); }
+  });
+  byId("release-wizard-form").addEventListener("input", (event) => {
+    if (event.target.id !== "wizard-key-file") invalidateWizard();
+  });
+  for (const id of ["wizard-platform", "wizard-scope", "wizard-managed"]) {
+    byId(id).addEventListener("change", () => {
+      invalidateWizard();
+      refreshWizardTargets();
+      updateWizardControls();
+    });
+  }
+  byId("wizard-key-file").addEventListener("change", async () => {
+    const file = byId("wizard-key-file").files[0];
+    if (!file) return;
+    try { await selectWizardKey((helper) => helper.loadKey(file)); }
+    catch (error) { showPageMessage(errorMessage(error), true); }
+  });
+  byId("wizard-generate-key").addEventListener("click", async () => {
+    try { await selectWizardKey((helper) => helper.generateKey()); }
+    catch (error) { showPageMessage(errorMessage(error), true); }
+  });
+  byId("wizard-backup-key").addEventListener("click", () => {
+    if (!wizard.key || !wizard.key.privateKeyPem) return;
+    saveDownload("myproxy-release-private-key.pem", wizard.key.privateKeyPem, "application/x-pem-file");
+    showToast("私钥备份已下载，请妥善保存。");
+  });
+  for (const [buttonId, fieldId] of [["wizard-copy-key", "wizard-key-config"], ["wizard-copy-linux-key", "wizard-linux-key-config"]]) {
+    byId(buttonId).addEventListener("click", async () => {
+      const value = byId(fieldId).value;
+      if (!value) return;
+      try { await navigator.clipboard.writeText(value); showToast("公钥配置已复制"); }
+      catch (_) { showToast("复制不可用，请选择公钥配置文本后手动复制。"); }
+    });
+  }
+  byId("wizard-reset").addEventListener("click", () => {
+    if (wizard.busy) return;
+    const previous = wizard.release;
+    clearWizard();
+    showPageMessage(previous ? `已有 release ${previous.id} 的状态已保留。请选择新版本和安装包。` : "可以重新选择版本和安装包。");
+  });
+  byId("wizard-export").addEventListener("click", () => {
+    if (!wizard.prepared) return;
+    saveDownload(`myproxy-${wizard.snapshot.platform}-${wizard.snapshot.version}-manifest.json`,
+      releaseSigning().exportEnvelope(wizard.prepared), "application/json");
+    if (wizard.prepared.artifactSignature) {
+      const artifactName = new URL(wizard.prepared.manifestDocument.artifact.url).pathname.split("/").pop()
+        || `myproxy-linux-${wizard.snapshot.version}.tar.gz`;
+      saveDownload(`${artifactName}.sig`, wizard.prepared.artifactSignature + "\n", "text/plain");
+    }
+    showToast("签名清单已导出；Linux 产物签名也会单独下载。");
+  });
+  byId("wizard-publish").addEventListener("click", async () => {
+    try { await publishWizard(); }
+    catch (error) { showPageMessage(errorMessage(error), true); }
+  });
+  updateWizardControls();
 
   byId("release-form").addEventListener("submit", async (event) => {
     event.preventDefault();

@@ -77,11 +77,13 @@ SERVER_MODULE_FILES=(
   __main__.py
   admin_ui.py
   app.py
+  artifact.py
   auth.py
   config.py
   db.py
   observability.py
   release.py
+  release_ui.py
   server.py
   xui.py
   xui_helper.py
@@ -1104,6 +1106,9 @@ ADMIN_UI_SLASH_STATUS="$(curl -sS --resolve "${DEVICE_API_SERVER_NAME}:${DEVICE_
 ADMIN_UI_JS_STATUS="$(curl -sS --resolve "${DEVICE_API_SERVER_NAME}:${DEVICE_API_PUBLIC_PORT}:127.0.0.1" \
   -o /dev/null -w '%{http_code}' \
   "https://${DEVICE_API_SERVER_NAME}:${DEVICE_API_PUBLIC_PORT}/admin/app.js")"
+ADMIN_RELEASE_SIGNING_STATUS="$(curl -sS --resolve "${DEVICE_API_SERVER_NAME}:${DEVICE_API_PUBLIC_PORT}:127.0.0.1" \
+  -o /dev/null -w '%{http_code}' \
+  "https://${DEVICE_API_SERVER_NAME}:${DEVICE_API_PUBLIC_PORT}/admin/release-signing.js")"
 READY_PUBLIC_STATUS="$(curl -sS --resolve "${DEVICE_API_SERVER_NAME}:${DEVICE_API_PUBLIC_PORT}:127.0.0.1" \
   -o /dev/null -w '%{http_code}' \
   "https://${DEVICE_API_SERVER_NAME}:${DEVICE_API_PUBLIC_PORT}/readyz")"
@@ -1117,7 +1122,8 @@ ADMIN_DOTDOT_STATUS="$(curl -sS --path-as-is -X POST --resolve "${DEVICE_API_SER
 if [ "$HEALTH_STATUS" != "200" ] || [ "$CONNECTIVITY_PUBLIC_STATUS" != "204" ] || \
    [ "$CONNECTIVITY_BODY_STATE" != "empty" ] || [ "$ADMIN_STATUS" != "404" ] || \
    [ "$ADMIN_UI_STATUS" != "404" ] || [ "$ADMIN_UI_SLASH_STATUS" != "404" ] || \
-   [ "$ADMIN_UI_JS_STATUS" != "404" ] || [ "$READY_PUBLIC_STATUS" != "404" ] || \
+   [ "$ADMIN_UI_JS_STATUS" != "404" ] || [ "$ADMIN_RELEASE_SIGNING_STATUS" != "404" ] || \
+   [ "$READY_PUBLIC_STATUS" != "404" ] || \
    [ "$ADMIN_DOTDOT_STATUS" != "404" ]; then
   echo "错误：公网网关验收失败（health=$HEALTH_STATUS connectivity-check=$CONNECTIVITY_PUBLIC_STATUS body=$CONNECTIVITY_BODY_STATE admin=$ADMIN_STATUS admin_ui=$ADMIN_UI_STATUS admin_ui_slash=$ADMIN_UI_SLASH_STATUS admin_ui_js=$ADMIN_UI_JS_STATUS readyz=$READY_PUBLIC_STATUS admin_dotdot=$ADMIN_DOTDOT_STATUS）" >&2
   exit 1

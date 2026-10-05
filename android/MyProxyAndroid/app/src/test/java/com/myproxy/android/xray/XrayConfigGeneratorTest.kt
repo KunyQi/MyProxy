@@ -83,13 +83,18 @@ class XrayConfigGeneratorTest {
             XrayConfigGenerator.generate(validProfile, ProxyMode.GLOBAL)
         ).jsonObject
 
-        val ruleRules = ruleConfig.getValue("routing").jsonObject.getValue("rules").jsonArray
+        val ruleRouting = ruleConfig.getValue("routing").jsonObject
+        val globalRouting = globalConfig.getValue("routing").jsonObject
+        assertEquals("IPIfNonMatch", ruleRouting.getValue("domainStrategy").jsonPrimitive.content)
+        assertEquals("AsIs", globalRouting.getValue("domainStrategy").jsonPrimitive.content)
+
+        val ruleRules = ruleRouting.getValue("rules").jsonArray
             .filterNot { rule ->
                 rule.jsonObject["inboundTag"]?.jsonArray?.any {
                     it.jsonPrimitive.content == XrayConfigGenerator.PROBE_INBOUND_TAG
                 } == true
             }
-        val globalRules = globalConfig.getValue("routing").jsonObject.getValue("rules").jsonArray
+        val globalRules = globalRouting.getValue("rules").jsonArray
             .filterNot { rule ->
                 rule.jsonObject["inboundTag"]?.jsonArray?.any {
                     it.jsonPrimitive.content == XrayConfigGenerator.PROBE_INBOUND_TAG
@@ -98,12 +103,59 @@ class XrayConfigGeneratorTest {
 
         // Probe allow/deny rules are checked separately; compare only rules
         // that can match ordinary traffic in the selected routing mode.
-        assertEquals(4, ruleRules.size)
+        assertEquals(6, ruleRules.size)
         assertEquals(2, globalRules.size)
-        assertEquals("geosite:cn", ruleRules[0].jsonObject.getValue("domain").jsonArray[0].jsonPrimitive.content)
-        assertEquals("geoip:cn", ruleRules[1].jsonObject.getValue("ip").jsonArray[0].jsonPrimitive.content)
+        assertEquals("geosite:cn", ruleRules[2].jsonObject.getValue("domain").jsonArray[0].jsonPrimitive.content)
+        assertEquals("direct", ruleRules[2].jsonObject.getValue("outboundTag").jsonPrimitive.content)
+        assertEquals("!geoip:cn", ruleRules[4].jsonObject.getValue("ip").jsonArray[0].jsonPrimitive.content)
+        assertEquals("proxy", ruleRules[4].jsonObject.getValue("outboundTag").jsonPrimitive.content)
+        assertEquals("geoip:cn", ruleRules[5].jsonObject.getValue("ip").jsonArray[0].jsonPrimitive.content)
+        assertEquals("direct", ruleRules[5].jsonObject.getValue("outboundTag").jsonPrimitive.content)
         assertEquals("geoip:private", globalRules[0].jsonObject.getValue("ip").jsonArray[0].jsonPrimitive.content)
         assertEquals("bittorrent", globalRules[1].jsonObject.getValue("protocol").jsonArray[0].jsonPrimitive.content)
+    }
+
+    @Test
+    fun `restrictions precede direct and category rules in both modes`() {
+        for (mode in ProxyMode.entries) {
+            for (attribution in listOf(false, true)) {
+                val rules = json.parseToJsonElement(XrayConfigGenerator.generate(validProfile, mode, attribution))
+                    .jsonObject.getValue("routing").jsonObject.getValue("rules").jsonArray
+                    .map { it.jsonObject }.filterNot { it.containsKey("inboundTag") }
+                assertEquals(mode.name, listOf("geoip:private"),
+                    rules[0].getValue("ip").jsonArray.map { it.jsonPrimitive.content })
+                assertEquals(mode.name, "blocked", rules[0].getValue("outboundTag").jsonPrimitive.content)
+                assertEquals(mode.name, listOf("bittorrent"),
+                    rules[1].getValue("protocol").jsonArray.map { it.jsonPrimitive.content })
+                assertEquals(mode.name, "blocked", rules[1].getValue("outboundTag").jsonPrimitive.content)
+            }
+        }
+    }
+
+    @Test
+    fun `international services precede CN IP fallback and preserve Microsoft China direct`() {
+        val rules = json.parseToJsonElement(XrayConfigGenerator.generate(validProfile, ProxyMode.RULE))
+            .jsonObject.getValue("routing").jsonObject.getValue("rules").jsonArray
+            .map { it.jsonObject }.filterNot { it.containsKey("inboundTag") }
+        val directDomains = rules[2].getValue("domain").jsonArray.map { it.jsonPrimitive.content }
+        assertEquals(listOf("geosite:cn", "domain:azure.cn", "domain:chinacloudapi.cn",
+            "domain:microsoftonline.cn", "domain:microsoft.com.cn", "domain:office365.cn", "full:cn.bing.com"),
+            directDomains)
+        val proxyDomains = rules[3].getValue("domain").jsonArray.map { it.jsonPrimitive.content }
+        assertEquals("proxy", rules[3].getValue("outboundTag").jsonPrimitive.content)
+        for (domain in listOf("domain:github.com", "domain:githubusercontent.com", "domain:githubassets.com",
+            "domain:ghcr.io", "domain:githubcopilot.com", "domain:youtube.com", "domain:googlevideo.com",
+            "domain:ytimg.com", "domain:google.com", "domain:googleapis.com", "domain:gstatic.com",
+            "domain:microsoftonline.com", "domain:office.com", "domain:sharepoint.com", "domain:msauth.net",
+            "domain:azureedge.net", "domain:x.com", "domain:twimg.com", "domain:chatgpt.com",
+            "domain:openai.com", "domain:oaistatic.com", "domain:oaiusercontent.com", "full:cdn.workos.com",
+            "full:challenges.cloudflare.com", "geosite:geolocation-!cn")) {
+            assertTrue(domain, domain in proxyDomains)
+        }
+        assertEquals(proxyDomains.size, proxyDomains.distinct().size)
+        assertTrue(proxyDomains.none { it in directDomains })
+        assertEquals(listOf("!geoip:cn"), rules[4].getValue("ip").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("geoip:cn"), rules[5].getValue("ip").jsonArray.map { it.jsonPrimitive.content })
     }
 
     @Test
@@ -200,15 +252,20 @@ class XrayConfigGeneratorTest {
 
     @Test
     fun `all configured domain and IP probe destinations precede the deny rule`() {
-        val rules = json.parseToJsonElement(XrayConfigGenerator.generate(validProfile, ProxyMode.RULE,
-            probeUrls = listOf("https://check.example.invalid/204", "https://203.0.113.4:8443/ping", "https://[2001:db8::1]/204")))
-            .jsonObject.getValue("routing").jsonObject.getValue("rules").jsonArray
-        val domainRule = rules[0].jsonObject
-        assertEquals(listOf("full:check.example.invalid"), domainRule.getValue("domain").jsonArray.map { it.jsonPrimitive.content })
-        val ipRule = rules[1].jsonObject
-        assertEquals(listOf("203.0.113.4", "2001:db8::1"), ipRule.getValue("ip").jsonArray.map { it.jsonPrimitive.content })
-        assertEquals("proxy", ipRule.getValue("outboundTag").jsonPrimitive.content)
-        assertEquals("blocked", rules[2].jsonObject.getValue("outboundTag").jsonPrimitive.content)
+        for (mode in ProxyMode.entries) {
+            val rules = json.parseToJsonElement(XrayConfigGenerator.generate(validProfile, mode,
+                probeUrls = listOf("https://check.example.invalid/204", "https://203.0.113.4:8443/ping", "https://[2001:db8::1]/204")))
+                .jsonObject.getValue("routing").jsonObject.getValue("rules").jsonArray
+            val domainRule = rules[0].jsonObject
+            assertEquals(mode.name, listOf("full:check.example.invalid"), domainRule.getValue("domain").jsonArray.map { it.jsonPrimitive.content })
+            assertEquals(mode.name, "proxy", domainRule.getValue("outboundTag").jsonPrimitive.content)
+            val ipRule = rules[1].jsonObject
+            assertEquals(mode.name, listOf("203.0.113.4", "2001:db8::1"), ipRule.getValue("ip").jsonArray.map { it.jsonPrimitive.content })
+            assertEquals(mode.name, "proxy", ipRule.getValue("outboundTag").jsonPrimitive.content)
+            assertEquals(mode.name, "blocked", rules[2].jsonObject.getValue("outboundTag").jsonPrimitive.content)
+            assertEquals(mode.name, listOf(XrayConfigGenerator.PROBE_INBOUND_TAG),
+                rules[2].jsonObject.getValue("inboundTag").jsonArray.map { it.jsonPrimitive.content })
+        }
     }
 
     @Test
@@ -249,12 +306,33 @@ class XrayConfigGeneratorTest {
     }
 
     @Test
-    fun `dns has five servers with expected strategy`() {
-        val config = XrayConfigGenerator.generate(validProfile, ProxyMode.RULE)
-        val dns = json.parseToJsonElement(config).jsonObject.getValue("dns").jsonObject
-        val servers = dns.getValue("servers").jsonArray
-        assertEquals(5, servers.size)
-        assertEquals("UseIP", dns.getValue("queryStrategy").jsonPrimitive.content)
-        assertEquals(false, dns.getValue("disableCache").jsonPrimitive.content.toBooleanStrictOrNull())
+    fun `dns races two resolvers per region and limits domestic fallback`() {
+        for (mode in ProxyMode.entries) {
+            val dns = json.parseToJsonElement(XrayConfigGenerator.generate(validProfile, mode))
+                .jsonObject.getValue("dns").jsonObject
+            val servers = dns.getValue("servers").jsonArray.map { it.jsonObject }
+            assertEquals(mode.name, 4, servers.size)
+            assertEquals(mode.name, "UseIP", dns.getValue("queryStrategy").jsonPrimitive.content)
+            assertFalse(mode.name, dns.getValue("disableCache").jsonPrimitive.boolean)
+            assertTrue(mode.name, dns.getValue("enableParallelQuery").jsonPrimitive.boolean)
+            assertEquals(mode.name, listOf("223.5.5.5", "119.29.29.29"),
+                servers.take(2).map { it.getValue("address").jsonPrimitive.content })
+            for (domestic in servers.take(2)) {
+                assertEquals(mode.name, listOf("geosite:cn"),
+                    domestic.getValue("domains").jsonArray.map { it.jsonPrimitive.content })
+                assertEquals(mode.name, listOf("geoip:cn"),
+                    domestic.getValue("expectIPs").jsonArray.map { it.jsonPrimitive.content })
+                assertTrue(mode.name, domestic.getValue("skipFallback").jsonPrimitive.boolean)
+            }
+            assertEquals(mode.name, listOf("https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"),
+                servers.drop(2).map { it.getValue("address").jsonPrimitive.content })
+            for (international in servers.drop(2)) {
+                assertEquals(mode.name, listOf("geosite:geolocation-!cn"),
+                    international.getValue("domains").jsonArray.map { it.jsonPrimitive.content })
+                assertFalse(mode.name, international["skipFallback"]?.jsonPrimitive?.boolean ?: false)
+            }
+            assertEquals(mode.name, servers.size,
+                servers.map { it.getValue("address").jsonPrimitive.content }.distinct().size)
+        }
     }
 }

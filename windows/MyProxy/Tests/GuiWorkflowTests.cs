@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -21,6 +22,15 @@ namespace MyProxy.Tests;
 [TestClass]
 public sealed class GuiWorkflowTests
 {
+    [ClassInitialize]
+    public static void InitializeGui(TestContext context) => RunSta(() =>
+    {
+        // WPF loads styles, text services and fonts on first use. Give that
+        // shared cold start its own budget before the per-test 15-second gate.
+        var fixture = new BindingFixture();
+        fixture.Type("abcd1234");
+    }, TimeSpan.FromSeconds(60));
+
     [TestMethod]
     public void BindingWorkflow_TypingEnablesSubmit_AndSuccessNotifiesOnce() => RunSta(() =>
     {
@@ -628,19 +638,25 @@ public sealed class GuiWorkflowTests
         Assert.Fail("GUI command continuation did not complete");
     }
 
-    private static void RunSta(Action action)
+    private static void RunSta(Action action, TimeSpan? timeout = null,
+        [CallerMemberName] string caller = "")
     {
         Exception? failure = null;
+        var budget = timeout ?? TimeSpan.FromSeconds(15);
         var thread = new Thread(() =>
         {
-            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
-            try { action(); }
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                action();
+            }
             catch (Exception ex) { failure = ex; }
             finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
-        }) { IsBackground = true };
+        }) { IsBackground = true, Name = caller };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(15)), "GUI code test timed out");
+        Assert.IsTrue(thread.Join(budget),
+            $"GUI STA phase '{caller}' timed out after {budget.TotalSeconds:0} seconds");
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 

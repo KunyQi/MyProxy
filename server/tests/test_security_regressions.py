@@ -889,10 +889,11 @@ class ServiceValidationTests(unittest.TestCase):
         self.assertIn("myproxy_device_api_claim", gateway)
         self.assertIn("limit_conn myproxy_device_api_conn 20", gateway)
         self.assertIn("limit_req_status 429", gateway)
-        # 十一个精确代理路由，含空 204 检测端点。
+        # 十一个精确代理路由，含空 204 检测端点，加一条受限产物下载路由。
         # 这个数字是有意锁死的：每多一条 location 都是一次对外暴露面的扩大，
         # 必须有人明确改这个断言，而不是顺手加一条路由。
-        self.assertEqual(gateway.count("proxy_set_header X-Request-ID $request_id;"), 11)
+        self.assertEqual(gateway.count("proxy_set_header X-Request-ID $request_id;"), 12)
+        self.assertEqual(gateway.count("proxy_set_header X-Forwarded-For $remote_addr;"), 12)
         self.assertIn("proxy_read_timeout 35s", gateway)
 
     def test_deploy_transaction_snapshots_and_rolls_back_before_ufw(self) -> None:
@@ -969,8 +970,8 @@ class ServiceValidationTests(unittest.TestCase):
         self.assertNotIn("CERT_SHA256", deploy)
         self.assertNotIn('scp "${SSH_OPTS[@]}" -r "$SERVER_DIR/myproxy_server"', deploy)
         for module_name in (
-            "__init__.py", "__main__.py", "admin_ui.py", "app.py", "auth.py",
-            "config.py", "db.py", "observability.py", "release.py",
+            "__init__.py", "__main__.py", "admin_ui.py", "app.py", "artifact.py", "auth.py",
+            "config.py", "db.py", "observability.py", "release.py", "release_ui.py",
             "server.py", "xui.py",
             "xui_helper.py",
         ):
@@ -983,6 +984,7 @@ class ServiceValidationTests(unittest.TestCase):
             "ADMIN_UI_STATUS",
             "ADMIN_UI_SLASH_STATUS",
             "ADMIN_UI_JS_STATUS",
+            "ADMIN_RELEASE_SIGNING_STATUS",
             "READY_PUBLIC_STATUS",
             "ADMIN_DOTDOT_STATUS",
         ):
@@ -990,7 +992,7 @@ class ServiceValidationTests(unittest.TestCase):
                 self.assertIn(status_variable, deploy)
                 self.assertIn(f'[ "${status_variable}" != "404" ]', deploy)
         for public_path in (
-            "/admin", "/admin/", "/admin/app.js", "/readyz", "/api/admin/../device/claim"
+            "/admin", "/admin/", "/admin/app.js", "/admin/release-signing.js", "/readyz", "/api/admin/../device/claim"
         ):
             with self.subTest(public_path=public_path):
                 self.assertIn(

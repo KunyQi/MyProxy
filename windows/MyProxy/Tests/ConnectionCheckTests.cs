@@ -37,33 +37,42 @@ public sealed class ConnectionCheckTests
         Assert.IsTrue(result.BestLatencyMs <= result.LatencyMs, "最快值不可能大于中位数");
     }
 
-    [TestMethod]
-    public async Task EchoedIpMatchesServer_IsVerified()
+    [DataTestMethod]
+    [DataRow("203.0.113.10", "203.0.113.10")]
+    [DataRow("2001:db8::10", "2001:0db8:0:0:0:0:0:10")]
+    public async Task EchoedIpMatchesKnownProxyEgress_IsVerified(string knownEgress, string observedEgress)
     {
-        using var stub = new RoutingStubProxy(Ok204, Trace(ServerIp));
-        ConnectionCheckResult result = await RunAsync(stub, ServerIp);
+        using var stub = new RoutingStubProxy(Ok204, Trace(observedEgress));
+        ConnectionCheckResult result = await RunAsync(stub, knownEgress);
 
         Assert.AreEqual(EgressVerdict.Verified, result.Egress);
     }
 
-    [TestMethod]
-    public async Task EchoedIpIsSomeoneElse_IsBypassed()
+    [DataTestMethod]
+    [DataRow("203.0.113.10", "203.0.113.7")]
+    [DataRow("203.0.113.10", "2001:db8::7")]
+    [DataRow("2001:db8::10", "203.0.113.7")]
+    [DataRow("2001:db8::10", "2001:db8::7")]
+    public async Task DifferentEchoedIp_DoesNotProveBypass(string knownEgress, string observedEgress)
     {
-        // xray 活着、系统代理也指过去了，但请求其实走了直连——这是唯一一种
-        // 「界面显示已连接、实际没有代理」的静默失效，必须判定出来。
-        using var stub = new RoutingStubProxy(Ok204, Trace("203.0.113.7"));
-        ConnectionCheckResult result = await RunAsync(stub, ServerIp);
+        // 同一节点可能有双栈或多个出口。地址不同不能独立证明请求走了直连。
+        using var stub = new RoutingStubProxy(Ok204, Trace(observedEgress));
+        ConnectionCheckResult result = await RunAsync(stub, knownEgress);
 
         Assert.IsTrue(result.Reachable, "延迟仍然量得到，不该因为出口不符就报不可达");
-        Assert.AreEqual(EgressVerdict.Bypassed, result.Egress);
+        Assert.AreEqual(EgressVerdict.Unknown, result.Egress);
+        Assert.IsNotNull(result.LatencyMs);
     }
 
-    [TestMethod]
-    public async Task ServerAddressIsHostname_StaysUnknown()
+    [DataTestMethod]
+    [DataRow(null)]
+    [DataRow("")]
+    [DataRow("vps.example.com")]
+    public async Task MissingOrNonIpEgressEvidence_StaysUnknown(string? knownEgress)
     {
         // 域名只能靠一次本地 DNS 解析去比对，而本地解析恰恰是被劫持时最先失真的东西。
         using var stub = new RoutingStubProxy(Ok204, Trace(ServerIp));
-        ConnectionCheckResult result = await RunAsync(stub, "vps.example.com");
+        ConnectionCheckResult result = await RunAsync(stub, knownEgress);
 
         Assert.IsTrue(result.Reachable);
         Assert.AreEqual(EgressVerdict.Unknown, result.Egress);
@@ -129,11 +138,11 @@ public sealed class ConnectionCheckTests
         Assert.IsFalse(result.Reachable);
     }
 
-    private static async Task<ConnectionCheckResult> RunAsync(RoutingStubProxy stub, string expectedEgress)
+    private static async Task<ConnectionCheckResult> RunAsync(RoutingStubProxy stub, string? knownEgress)
     {
         var service = new NetworkService(ProbeUrl, TraceUrl);
         return await service.CheckConnectionAsync(
-            "127.0.0.1", stub.Port, expectedEgress, CancellationToken.None);
+            "127.0.0.1", stub.Port, knownEgress, CancellationToken.None);
     }
 
     private static string Trace(string ip) => Body($"fl=1f2\nh=example\nip={ip}\nts=1700000000\n");

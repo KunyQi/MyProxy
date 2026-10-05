@@ -29,6 +29,37 @@ object XrayConfigGenerator {
     /** Tag of the loopback inbound the connectivity probe sends through. */
     const val PROBE_INBOUND_TAG = "probe-in"
 
+    private val domesticMicrosoftDomains = listOf(
+        "domain:azure.cn", "domain:chinacloudapi.cn", "domain:microsoftonline.cn",
+        "domain:microsoft.com.cn", "domain:office365.cn", "full:cn.bing.com",
+    )
+
+    private val serviceProxyDomains = listOf(
+        "domain:github.com", "domain:githubusercontent.com", "domain:githubassets.com", "domain:github.io",
+        "domain:ghcr.io", "domain:githubcopilot.com", "domain:githubcopilot.net",
+        "domain:google.com", "domain:googleapis.com", "domain:googleusercontent.com", "domain:gstatic.com",
+        "domain:ggpht.com", "domain:googlevideo.com", "domain:googleadservices.com", "domain:googlesyndication.com",
+        "domain:google-analytics.com", "domain:googleblog.com", "domain:blogspot.com", "domain:withgoogle.com",
+        "domain:microsoft.com", "domain:microsoftonline.com", "domain:microsoft365.com", "domain:cloud.microsoft",
+        "domain:office.com", "domain:office.net", "domain:office365.com", "domain:outlook.com",
+        "domain:outlook.office365.com", "domain:live.com", "domain:onedrive.com", "domain:sharepoint.com",
+        "domain:sharepointonline.com", "domain:teams.microsoft.com", "domain:msauth.net", "domain:msftauth.net",
+        "domain:msauthimages.net", "domain:msftauthimages.net", "domain:azure.com", "domain:azure.net",
+        "domain:windows.net", "domain:azureedge.net", "domain:azurefd.net", "domain:visualstudio.com",
+        "domain:vsassets.io", "domain:bing.com", "domain:msn.com",
+        "domain:openai.com", "domain:chatgpt.com", "domain:oaistatic.com", "domain:oaiusercontent.com",
+        "domain:oaistatsig.com", "domain:openaimerge.com", "full:challenges.cloudflare.com", "full:cdn.workos.com",
+        "full:setup.workos.com", "full:forwarder.workos.com", "full:images.workoscdn.com", "full:workos.imgix.net",
+    )
+
+    private val videoProxyDomains = listOf(
+        "geosite:youtube", "domain:youtube.com", "domain:youtu.be", "domain:ytimg.com", "domain:googlevideo.com",
+    )
+
+    private val socialProxyDomains = listOf(
+        "geosite:twitter", "domain:x.com", "domain:twitter.com", "domain:twimg.com", "domain:t.co",
+    )
+
     private val json = Json {
         prettyPrint = true
         prettyPrintIndent = "  "
@@ -71,7 +102,12 @@ object XrayConfigGenerator {
             dns = windowsDns(),
             inbounds = listOf(tunInbound(), probeInbound()),
             outbounds = outbounds,
-            routing = RoutingConfig(rules = routingRules(mode, categoryAttribution, probeUrls)),
+            routing = RoutingConfig(
+                // Resolve unmatched domains so the CN IP rule also covers sites
+                // missing from geosite:cn. Global mode keeps domain routing as-is.
+                domainStrategy = if (mode == ProxyMode.RULE) "IPIfNonMatch" else "AsIs",
+                rules = routingRules(mode, categoryAttribution, probeUrls),
+            ),
         )
         return json.encodeToString(XrayConfig.serializer(), config)
     }
@@ -111,18 +147,22 @@ object XrayConfigGenerator {
                 address = "223.5.5.5",
                 domains = listOf("geosite:cn"),
                 expectIPs = listOf("geoip:cn"),
+                skipFallback = true,
             ),
             DnsServer.ObjectDns(
                 address = "119.29.29.29",
                 domains = listOf("geosite:cn"),
                 expectIPs = listOf("geoip:cn"),
+                skipFallback = true,
             ),
             DnsServer.ObjectDns(
                 address = "https://1.1.1.1/dns-query",
                 domains = listOf("geosite:geolocation-!cn"),
             ),
-            DnsServer.Plain("https://1.1.1.1/dns-query"),
-            DnsServer.Plain("https://8.8.8.8/dns-query"),
+            DnsServer.ObjectDns(
+                address = "https://8.8.8.8/dns-query",
+                domains = listOf("geosite:geolocation-!cn"),
+            ),
         ),
     )
 
@@ -200,29 +240,8 @@ object XrayConfigGenerator {
             inboundTag = listOf(PROBE_INBOUND_TAG), ip = ips, outboundTag = PROXY_OUTBOUND_TAG,
         )
         rules += RoutingRule(inboundTag = listOf(PROBE_INBOUND_TAG), outboundTag = "blocked")
-        // Category rules must sit after the direct rules and before the
-        // blocked ones. Ahead of geosite:cn they would steal the "domestic
-        // sites go direct" meaning of rule mode -- attribution must never
-        // change where traffic goes. Behind geoip:private they would never
-        // be reached, since the core takes the first matching rule.
-        if (mode == ProxyMode.RULE) {
-            rules += RoutingRule(
-                domain = listOf("geosite:cn"),
-                outboundTag = "direct",
-            )
-            rules += RoutingRule(
-                ip = listOf("geoip:cn"),
-                outboundTag = "direct",
-            )
-        }
-        if (categoryAttribution) {
-            for (routed in ServiceCategories.ROUTED) {
-                rules += RoutingRule(
-                    domain = routed.geosites,
-                    outboundTag = routed.tag,
-                )
-            }
-        }
+        // Reject private addresses before a CN result can make a mixed address
+        // set direct. Protocol restrictions also precede all user traffic rules.
         rules += RoutingRule(
             ip = listOf("geoip:private"),
             outboundTag = "blocked",
@@ -231,6 +250,45 @@ object XrayConfigGenerator {
             protocol = listOf("bittorrent"),
             outboundTag = "blocked",
         )
+        if (mode == ProxyMode.RULE) {
+            rules += RoutingRule(
+                domain = listOf("geosite:cn") + domesticMicrosoftDomains,
+                outboundTag = "direct",
+            )
+        }
+        // Preserve domestic domain routing and category counters. Service
+        // domains take the tunnel before the CN IP fallback, without a local
+        // DNS lookup on the first request.
+        if (categoryAttribution) {
+            for (routed in ServiceCategories.ROUTED) {
+                val extraDomains = when (routed.category) {
+                    ServiceCategories.VIDEO -> videoProxyDomains
+                    ServiceCategories.SOCIAL -> socialProxyDomains
+                    else -> emptyList()
+                }
+                rules += RoutingRule(
+                    domain = (routed.geosites + extraDomains).distinct(),
+                    outboundTag = routed.tag,
+                )
+            }
+        }
+        if (mode == ProxyMode.RULE) {
+            rules += RoutingRule(
+                domain = (serviceProxyDomains + videoProxyDomains + socialProxyDomains +
+                    "geosite:geolocation-!cn").distinct(),
+                outboundTag = PROXY_OUTBOUND_TAG,
+            )
+            // Xray accepts a match against any resolved address. A foreign
+            // result must win over a CN result in a mixed A/AAAA response.
+            rules += RoutingRule(
+                ip = listOf("!geoip:cn"),
+                outboundTag = PROXY_OUTBOUND_TAG,
+            )
+            rules += RoutingRule(
+                ip = listOf("geoip:cn"),
+                outboundTag = "direct",
+            )
+        }
         return rules
     }
 }

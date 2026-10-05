@@ -577,7 +577,6 @@ public sealed class ConnectionController : IConnectionController, IDisposable
         {
             int port;
             int probePort;
-            string egress;
             long epoch;
             lock (_checkSync)
             {
@@ -589,7 +588,6 @@ public sealed class ConnectionController : IConnectionController, IDisposable
 
                 port = _currentPort;
                 probePort = ProbePort;
-                egress = _currentProfile.Server;
                 epoch = _connectionEpoch;
                 linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 _checkCts = linked;
@@ -598,8 +596,10 @@ public sealed class ConnectionController : IConnectionController, IDisposable
             _isChecking = true;
             RaiseCheckChanged();
 
+            // 当前 profile 只描述 VLESS 连接入口，没有可信出口数据。
+            // IPv4 入口可以经 IPv6 出口转发，入口与回显 IP 不同不能据此判定绕过。
             ConnectionCheckResult result = await _network
-                .CheckConnectionAsync(ProxyHost, probePort, egress, linked.Token)
+                .CheckConnectionAsync(ProxyHost, probePort, knownProxyEgressIp: null, linked.Token)
                 .ConfigureAwait(false);
 
             // 期间断开、换过端口、或整条连接被重建过：这份结论描述的不再是当前连接，

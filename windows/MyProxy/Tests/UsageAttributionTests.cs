@@ -420,19 +420,22 @@ public class CategoryRoutingTests
     }
 
     [TestMethod]
-    public void CategoryRulesComeAfterDirectButBeforeBlocked()
+    public void CategoryRulesFollowProtectionAndDomesticDomainsBeforeGenericProxyAndIpFallback()
     {
-        // 排在 geosite:cn 之前会抢走「国内站点直连」这条模式语义；排在
-        // geoip:private 之后就永远轮不到。
         XrayRootConfig config = Generate(categories: true, mode: ProxyMode.Rule);
         List<string> tags = config.Routing.Rules.Select(rule => rule.OutboundTag).ToList();
 
-        int lastDirect = tags.LastIndexOf("direct");
+        int domesticDomain = config.Routing.Rules.FindIndex(rule => rule.Domain?.Contains("geosite:cn") == true);
         int firstCategory = tags.FindIndex(tag => tag.StartsWith("cat-", StringComparison.Ordinal));
-        int firstBlocked = tags.IndexOf("blocked");
+        int lastBlocked = tags.LastIndexOf("blocked");
+        int proxyDomain = config.Routing.Rules.FindIndex(rule => rule.OutboundTag == "proxy" && rule.Domain is not null);
+        int domesticIp = config.Routing.Rules.FindIndex(rule => rule.Ip?.Contains("geoip:cn") == true);
 
-        Assert.IsTrue(lastDirect >= 0 && firstCategory > lastDirect, "categories must follow the direct rules");
-        Assert.IsTrue(firstBlocked > firstCategory, "categories must precede the blocked rules");
+        Assert.IsTrue(lastBlocked >= 0 && lastBlocked < domesticDomain);
+        Assert.IsTrue(domesticDomain < firstCategory && firstCategory < proxyDomain);
+        Assert.IsTrue(proxyDomain < domesticIp);
+        CollectionAssert.Contains(config.Routing.Rules.Single(rule => rule.OutboundTag == "cat-video").Domain!, "domain:googlevideo.com");
+        CollectionAssert.Contains(config.Routing.Rules.Single(rule => rule.OutboundTag == "cat-social").Domain!, "domain:x.com");
     }
 
     [TestMethod]

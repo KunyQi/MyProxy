@@ -42,13 +42,13 @@ An actual local proxy test with curl 8.13 on Windows still did not recognize ULA
 
 ## Verification scope
 
-Results of this round of verification:
+The verification of this round of routing changes is below. The unit test counts for the three clients were re-checked against the GitHub Actions CI results of 2026-11-03; the other rows are one-off measurements from that time and are not part of the repository's tests.
 
 | Verification | Result and scope |
 | --- | --- |
-| Windows unit tests | 437 passed; the sandbox cannot run three test classes that need system privileges such as the registry and certificate store, and they are not counted as passed |
-| Linux unit tests | 119 passed, 7 skipped by platform; run on Windows, without operating a real Linux desktop |
-| Android | 271 unit tests passed, Debug APK build and Lint passed; this round's routing changes were not re-tested on a real device |
+| Windows unit tests | 472 passed, 0 skipped; run on the CI Windows runner, including the test classes that need system privileges such as the registry and certificate store |
+| Linux unit tests | 126 passed, 0 skipped; run on the CI Ubuntu runner, without operating a real Linux desktop |
+| Android | 271 unit tests passed (Debug and Staging variants), Release/Staging Lint and APK builds passed; this round's routing changes were not re-tested on a real device |
 | Actual Xray core | 133 routing/protocol/probe/statistics cases passed, using local DNS and test outbounds |
 | Configuration across platforms | Android and the shared C# generator produce the same four DNS groups, user routing and outbound configuration |
 | IPv6 bypass ranges | All 65,536 first IPv6 hextets enumerated: the equivalent expansion misses nothing and widens nothing; loopback, internal and public boundaries also tested |

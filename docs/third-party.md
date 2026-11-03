@@ -9,7 +9,7 @@
 | [v2ray-rules-dat](https://github.com/Loyalsoldier/v2ray-rules-dat) | GeoIP/GeoSite 来源经 Xray v26.9.9 的 [资产更新工作流](https://github.com/XTLS/Xray-core/blob/v26.9.9/.github/workflows/scheduled-assets-update.yml) 确认；项目裁剪使用到的标签，清单记录原始和裁剪后摘要 |
 | [v2fly/geoip](https://github.com/v2fly/geoip)、[domain-list-community](https://github.com/v2fly/domain-list-community) | 规则数据的上游生成器和社区列表；数据与生成器遵循各自随附许可 |
 | [.NET Runtime](https://github.com/dotnet/runtime)、[WPF](https://github.com/dotnet/wpf) | .NET 8，Windows WPF / Linux 通用运行库；实际自包含运行时版本由构建产物清单记录 |
-| [Avalonia](https://github.com/AvaloniaUI/Avalonia)、[Inter](https://github.com/rsms/inter) | Avalonia/Desktop/Fluent/Fonts.Inter 11.3.2，Diagnostics 仅 Debug；[GUI 项目](../linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj) 固定直接包版本 |
+| [Avalonia](https://github.com/AvaloniaUI/Avalonia)、[Inter](https://github.com/rsms/inter) | Avalonia/Desktop/Fluent/Fonts.Inter 11.3.22，Diagnostics 仅 Debug；[GUI 项目](../linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj) 固定直接包版本 |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) / [Skia](https://skia.org/)、[HarfBuzz](https://github.com/harfbuzz/harfbuzz)、[MicroCom](https://github.com/kekekeks/MicroCom)、[Tmds.DBus](https://github.com/tmds/Tmds.DBus)、[ANGLE](https://chromium.googlesource.com/angle/angle) | Avalonia 的原生渲染、文字整形与桌面互操作传递依赖；以对应 NuGet 包依赖及 native assets 记录为准 |
 | [AndroidX / Compose](https://github.com/androidx/androidx) | Core KTX、Activity Compose、UI/Graphics/Tooling/Preview、Material3、Navigation、Lifecycle Runtime/ViewModel、DataStore；版本及 BOM 见 [version catalog](../android/MyProxyAndroid/gradle/libs.versions.toml) |
 | [Kotlin](https://github.com/JetBrains/kotlin) | 2.4.20，AGP 内置 Kotlin 与 Compose/Serialization 编译插件及标准库 |
@@ -21,7 +21,7 @@
 | [systemd](https://github.com/systemd/systemd)、[GNU Bash](https://www.gnu.org/software/bash/)、[GLib / GSettings](https://docs.gtk.org/gio/class.Settings.html) | 用户/服务端服务管理、部署脚本、GNOME 代理设置 |
 | [.NET SDK](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | SDK 8.0.424，见 [global.json](../global.json)；构建与发布 |
 | [OpenJDK](https://github.com/openjdk/jdk17u)、[Gradle](https://github.com/gradle/gradle)、[AGP](https://android.googlesource.com/platform/tools/base/)、[Android SDK Build Tools](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/) | JDK 17、Gradle 9.8.0、AGP 9.4.1、SDK/Build Tools 37；wrapper JAR 和分发包摘要固定 |
-| [MSTest](https://github.com/microsoft/testfx)、[VSTest](https://github.com/microsoft/vstest) | MSTest Framework/Adapter 3.6.4、Microsoft.NET.Test.Sdk 17.11.1；Windows/Linux 测试项目 |
+| [MSTest](https://github.com/microsoft/testfx)、[VSTest](https://github.com/microsoft/vstest) | MSTest Framework/Adapter 3.11.1、Microsoft.NET.Test.Sdk 18.10.1；Windows/Linux 测试项目 |
 | [JUnit 4](https://github.com/junit-team/junit4)、[Hamcrest](https://github.com/hamcrest/JavaHamcrest) | JUnit 4.13.2 与传递断言库；Android JVM 测试 |
 | [Go](https://go.dev/)、[Go mobile](https://pkg.go.dev/golang.org/x/mobile) | 原生 AAR 记录 Go 1.27.1、mobile 8b95e45f8d3e；桥接源文件保留 Go Authors 版权头与 [BSD 许可全文](../licenses/Go-BSD-3-Clause.txt)；常规客户端构建无需重新编译 Go 核心 |
 

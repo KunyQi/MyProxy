@@ -12,7 +12,7 @@
 | [Avalonia](https://github.com/AvaloniaUI/Avalonia)、[Inter](https://github.com/rsms/inter) | Avalonia/Desktop/Fluent/Fonts.Inter 11.3.2，Diagnostics 仅 Debug；[GUI 项目](../linux/MyProxyLinux/gui/MyProxy.Linux.Gui.csproj) 固定直接包版本 |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) / [Skia](https://skia.org/)、[HarfBuzz](https://github.com/harfbuzz/harfbuzz)、[MicroCom](https://github.com/kekekeks/MicroCom)、[Tmds.DBus](https://github.com/tmds/Tmds.DBus)、[ANGLE](https://chromium.googlesource.com/angle/angle) | Avalonia 的原生渲染、文字整形与桌面互操作传递依赖；以对应 NuGet 包依赖及 native assets 记录为准 |
 | [AndroidX / Compose](https://github.com/androidx/androidx) | Core KTX、Activity Compose、UI/Graphics/Tooling/Preview、Material3、Navigation、Lifecycle Runtime/ViewModel、DataStore；版本及 BOM 见 [version catalog](../android/MyProxyAndroid/gradle/libs.versions.toml) |
-| [Kotlin](https://github.com/JetBrains/kotlin) | 2.4.20，含 Android/Compose/Serialization 编译插件与标准库；Android 使用 AGP 内置 Kotlin |
+| [Kotlin](https://github.com/JetBrains/kotlin) | 2.4.20，AGP 内置 Kotlin 与 Compose/Serialization 编译插件及标准库 |
 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines)、[kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | 1.9.0 / 1.7.3；Android 异步任务与 JSON |
 | [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/)、[Java annotations](https://github.com/JetBrains/java-annotations) | OkHttp 4.12.0；Okio 与注解由 JVM 依赖树解析 |
 | [Python / CPython](https://github.com/python/cpython)、[SQLite](https://www.sqlite.org/) | Server 仅使用 Python 标准库；SQLite 通过 sqlite3 提供，实际版本随 Python/系统构建 |

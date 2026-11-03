@@ -222,9 +222,9 @@ WINDOWS_RUNTIME_PACKAGES = {
     "runtimepack.Microsoft.NETCore.App.Runtime.win-x64": "Microsoft.NETCore.App.Runtime.win-x64",
     "runtimepack.Microsoft.WindowsDesktop.App.Runtime.win-x64": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
 }
-EXPECTED_GRADLE_DISTRIBUTION = "gradle-8.13-bin.zip"
-EXPECTED_GRADLE_DISTRIBUTION_SHA256 = "20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78"
-EXPECTED_GRADLE_WRAPPER_JAR_SHA256 = "81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f"
+EXPECTED_GRADLE_DISTRIBUTION = "gradle-9.8.0-bin.zip"
+EXPECTED_GRADLE_DISTRIBUTION_SHA256 = "bafd5ce9cfaea0fbccfdc8439a1ac42fbd4cd9c89dc9a988228d8a2639a58e6c"
+EXPECTED_GRADLE_WRAPPER_JAR_SHA256 = "238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5"
 
 
 class ReleaseVerificationError(RuntimeError):

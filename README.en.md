@@ -116,14 +116,14 @@ Capabilities have sources, and contributions are on record. The list below cover
 | 16 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Android coroutines and asynchronous tasks |
 | 17 | [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | Android JSON serialization |
 | 18 | [OkHttp](https://square.github.io/okhttp/), [Okio](https://square.github.io/okio/) | Android HTTPS requests and I/O |
-| 19 | [Java annotations](https://github.com/JetBrains/java-annotations) | Annotation metadata for JVM dependencies |
+| 19 | [JetBrains annotations](https://github.com/JetBrains/java-annotations), [AndroidX Annotation](https://developer.android.com/jetpack/androidx/releases/annotation) | Annotation metadata for JVM dependencies |
 | 20 | [Python / CPython](https://github.com/python/cpython) | Server standard library runtime and general tooling |
 | 21 | [SQLite](https://www.sqlite.org/) | Server storage for devices, configuration and usage |
 | 22 | [nginx](https://github.com/nginx/nginx) | Public HTTPS, route allowlist and static download page |
 | 23 | [OpenSSL](https://github.com/openssl/openssl), [curl](https://github.com/curl/curl) | Certificate checks and HTTPS acceptance during deployment |
 | 24 | [systemd](https://github.com/systemd/systemd), [GNU Bash](https://www.gnu.org/software/bash/) | Linux services, auto-start and deployment scripts |
 | 25 | [GLib / GSettings](https://docs.gtk.org/gio/class.Settings.html) | GNOME system proxy settings and restoration |
-| 26 | [.NET SDK / MSBuild](https://github.com/dotnet/sdk), [MSBuild](https://github.com/dotnet/msbuild) | Windows/Linux compilation and publishing |
+| 26 | [.NET SDK](https://github.com/dotnet/sdk), [MSBuild](https://github.com/dotnet/msbuild) | Windows/Linux compilation and publishing |
 | 27 | [OpenJDK](https://github.com/openjdk/jdk17u), [Gradle](https://github.com/gradle/gradle) | Android build toolchain |
 | 28 | [Android Gradle Plugin](https://android.googlesource.com/platform/tools/base/), [Android SDK Build Tools](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/) | Android resources, packaging and build checks |
 | 29 | [MSTest](https://github.com/microsoft/testfx), [VSTest](https://github.com/microsoft/vstest) | Windows/Linux unit and regression tests |

@@ -48,7 +48,7 @@ Results of this round of verification:
 | --- | --- |
 | Windows unit tests | 437 passed; the sandbox cannot run three test classes that need system privileges such as the registry and certificate store, and they are not counted as passed |
 | Linux unit tests | 119 passed, 7 skipped by platform; run on Windows, without operating a real Linux desktop |
-| Android | 271 unit tests passed, Debug APK build and Lint passed; no on-device testing |
+| Android | 271 unit tests passed, Debug APK build and Lint passed; this round's routing changes were not re-tested on a real device |
 | Actual Xray core | 133 routing/protocol/probe/statistics cases passed, using local DNS and test outbounds |
 | Configuration across platforms | Android and the shared C# generator produce the same four DNS groups, user routing and outbound configuration |
 | IPv6 bypass ranges | All 65,536 first IPv6 hextets enumerated: the equivalent expansion misses nothing and widens nothing; loopback, internal and public boundaries also tested |

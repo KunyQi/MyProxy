@@ -116,14 +116,14 @@ Linux 构建与使用见 [Linux README](linux/MyProxyLinux/README.md)。生产�
 | 16 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Android 协程与异步任务 |
 | 17 | [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | Android JSON 序列化 |
 | 18 | [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/) | Android HTTPS 请求及 I/O |
-| 19 | [Java annotations](https://github.com/JetBrains/java-annotations) | JVM 依赖的注解元数据 |
+| 19 | [JetBrains annotations](https://github.com/JetBrains/java-annotations)、[AndroidX Annotation](https://developer.android.com/jetpack/androidx/releases/annotation) | JVM 依赖的注解元数据 |
 | 20 | [Python / CPython](https://github.com/python/cpython) | Server 标准库运行时和通用工具 |
 | 21 | [SQLite](https://www.sqlite.org/) | Server 的设备、配置与用量存储 |
 | 22 | [nginx](https://github.com/nginx/nginx) | 公网 HTTPS、路由白名单与静态下载页 |
 | 23 | [OpenSSL](https://github.com/openssl/openssl)、[curl](https://github.com/curl/curl) | 部署中的证书检查与 HTTPS 验收 |
 | 24 | [systemd](https://github.com/systemd/systemd)、[GNU Bash](https://www.gnu.org/software/bash/) | Linux 服务、自启与部署脚本 |
 | 25 | [GLib / GSettings](https://docs.gtk.org/gio/class.Settings.html) | GNOME 系统代理设置与恢复 |
-| 26 | [.NET SDK / MSBuild](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | Windows/Linux 编译与发布 |
+| 26 | [.NET SDK](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | Windows/Linux 编译与发布 |
 | 27 | [OpenJDK](https://github.com/openjdk/jdk17u)、[Gradle](https://github.com/gradle/gradle) | Android 构建工具链 |
 | 28 | [Android Gradle Plugin](https://android.googlesource.com/platform/tools/base/)、[Android SDK Build Tools](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/) | Android 资源、打包及构建检查 |
 | 29 | [MSTest](https://github.com/microsoft/testfx)、[VSTest](https://github.com/microsoft/vstest) | Windows/Linux 单元与回归测试 |

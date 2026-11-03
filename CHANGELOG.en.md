@@ -11,4 +11,4 @@ This file records changes to public interfaces, behaviour and compatibility. Ver
 - MIT project license, with third-party licenses, asset digests, native source directions and rebuild/install instructions included.
 - Download page template for all three platforms, build regression CI, and contribution and security reporting processes.
 
-Android has passed the existing on-device tests. Later interaction changes in this version still need to be re-verified on real devices; Linux desktop integration needs to be confirmed in the target desktop environments. The first CI and code scanning results on GitHub are to be confirmed after the repository goes public.
+Android has passed the existing on-device tests. Later interaction changes in this version still need to be re-verified on real devices; Linux desktop integration needs to be confirmed in the target desktop environments. The build regression CI and CodeQL code scanning now run on the public repository through GitHub Actions.

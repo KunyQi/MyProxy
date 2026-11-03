@@ -16,7 +16,7 @@ git checkout --detach d0c6c4ae1b09c912070c8288bd0dbcc2e492ac29
 
 ## 重建 AAR
 
-上游该版本的构建工作流使用 Go、Android SDK/NDK 和 gomobile。实际 AAR 的 Go 版本为 **1.27.1**；工作流的 Android 输入为 **platforms;android-37.0、build-tools;37.0.0、NDK 29.0.14206865**。这些是上游内核构建工具；MyProxy 应用仍使用 README 中的 SDK 35 和 JDK 17。
+上游该版本的构建工作流使用 Go、Android SDK/NDK 和 gomobile。实际 AAR 的 Go 版本为 **1.27.1**；工作流的 Android 输入为 **platforms;android-37.0、build-tools;37.0.0、NDK 29.0.14206865**。这些是上游内核构建工具；MyProxy 应用使用 README 中的 SDK 37 和 JDK 17。
 
 安装工具后，在包装层源码目录设置 `JAVA_HOME`、`ANDROID_HOME` 和 `ANDROID_NDK_HOME`，并将 Go 的 bin 目录放入 PATH。使用版本锁定的 Go mobile，避免用 `@latest` 改变桥接工具：
 

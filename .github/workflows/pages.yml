@@ -1,7 +1,8 @@
 name: Documentation site
 
-# Builds the MkDocs site from mkdocs.yml. Pull requests only build it (so a
-# broken link fails review); pushes to main also publish it to GitHub Pages.
+# Builds the MkDocs site from mkdocs.yml. Its look comes from the client's XAML
+# design tokens, hence the windows/ paths below. Pull requests only build it (so
+# a broken link fails review); pushes to main also publish it to GitHub Pages.
 
 on:
   push:
@@ -17,6 +18,8 @@ on:
       - server/docs/**
       - linux/MyProxyLinux/README.md
       - linux/MyProxyLinux/gui/README.md
+      - windows/MyProxy/Themes/*.xaml
+      - windows/MyProxy/Assets/app.svg
       - mkdocs.yml
       - scripts/mkdocs_hooks.py
       - scripts/docs-requirements.txt
@@ -33,6 +36,8 @@ on:
       - server/docs/**
       - linux/MyProxyLinux/README.md
       - linux/MyProxyLinux/gui/README.md
+      - windows/MyProxy/Themes/*.xaml
+      - windows/MyProxy/Assets/app.svg
       - mkdocs.yml
       - scripts/mkdocs_hooks.py
       - scripts/docs-requirements.txt

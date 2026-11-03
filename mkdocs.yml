@@ -38,23 +38,39 @@ theme:
     - search.highlight
     - content.code.copy
     - content.action.edit
+  # The client's three skins (windows/MyProxy/Themes), all light like the
+  # client itself. Colours come from extra_css; see docs/assets/stylesheets/myproxy.css.
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: indigo
+    - scheme: classic
+      primary: custom
+      accent: custom
       toggle:
-        icon: material/weather-night
-        name: 切换到深色模式
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: indigo
-      accent: indigo
+        icon: material/palette-outline
+        name: 经典 · 切换到瓷白
+    - scheme: porcelain
+      primary: custom
+      accent: custom
       toggle:
-        icon: material/weather-sunny
-        name: 切换到浅色模式
+        icon: material/palette-outline
+        name: 瓷白 · 切换到釉陶
+    - scheme: ceramic
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/palette-outline
+        name: 釉陶 · 切换到经典
+  # System fonts only (the client's Segoe UI + Microsoft YaHei UI first);
+  # no Google Fonts request, which is slow or blocked in mainland China.
+  font: false
+  logo: assets/images/app.svg
+  favicon: assets/images/app.svg
   icon:
     repo: fontawesome/brands/github
+
+# tokens.css is generated from the client's XAML design tokens by the hook.
+extra_css:
+  - assets/stylesheets/tokens.css
+  - assets/stylesheets/myproxy.css
 
 plugins:
   - search:

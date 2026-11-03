@@ -97,24 +97,32 @@ validation:
   links:
     anchors: warn
 
+# Guides (docs/index.md, docs/guide/) are written for the site; the sections
+# after them are the repository's technical docs, published unchanged.
 nav:
   - 首页: index.md
-  - 部署:
+  - 入门:
+      - guide/how-it-works.md
+      - guide/deploy.md
+      - guide/clients.md
+      - guide/faq.md
+  - 参考 · 部署与运维:
       - deployment.md
       - network-routing.md
       - server/index.md
       - server/deployment.md
       - server/admin-browser-bridge.md
-  - 客户端:
+  - 参考 · 客户端:
       - linux/index.md
       - linux/gui.md
       - android-core-rebuild.md
-  - 开发与维护:
+  - 参考 · 开发与发布:
       - architecture.md
       - maintaining.md
       - release-publishing.md
       - contributing.md
-  - 参考:
+  - 参考 · 许可与政策:
+      - 项目 README: readme.md
       - third-party.md
       - third-party-notices.md
       - security.md

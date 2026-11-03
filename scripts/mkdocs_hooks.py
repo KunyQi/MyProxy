@@ -1,8 +1,8 @@
 """MkDocs hooks for the MyProxy documentation site (see mkdocs.yml).
 
-The site publishes Markdown that already lives across the repository -- the
-README, policy files, docs/ and component READMEs -- without moving or
-duplicating it.  Each published file is mapped from its repository path to a
+The site's own pages (home page and guides) live in docs/. It also publishes
+the technical Markdown that already lives across the repository -- the README,
+policy files, docs/ and component READMEs -- without moving or duplicating it.  Each published file is mapped from its repository path to a
 site path, and relative links are rewritten so they keep working on the site:
 
 * a link to another published page points at that page on the site;
@@ -31,9 +31,10 @@ BRANCH = "main"
 ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = "docs"
 
-# Repository path -> site source path, for pages outside docs/.
+# Repository path -> site source path, for pages outside docs/. The site's
+# own home page is docs/index.md; the README is published as a reference page.
 EXTRA_PAGES = {
-    "README.md": "index.md",
+    "README.md": "readme.md",
     "CHANGELOG.md": "changelog.md",
     "CONTRIBUTING.md": "contributing.md",
     "SECURITY.md": "security.md",

@@ -200,11 +200,9 @@
   font-weight: 600;
 }
 
-/* 节与节之间用细线分组，跟设置页的分组细线同一个做法 */
+/* 节与节之间只靠留白分开，不画线：细线留给页眉、卡片和表格这类结构边界 */
 .md-typeset h2 {
-  margin: 2em 0 0.8em;
-  padding-top: 1.2em;
-  border-top: 1px solid var(--mp-border);
+  margin: 2.2em 0 0.7em;
   font-size: 1.3em;
   font-weight: 600;
 }

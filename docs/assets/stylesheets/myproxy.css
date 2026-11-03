@@ -107,6 +107,23 @@
   border-radius: 2px;
 }
 
+/* 语言切换：一个文字按钮，照客户端 TextLinkButton——文字色，悬停时 Border 色底淡入 */
+.md-header__button.mp-lang {
+  margin: 0 0.2rem;
+  padding: 0 0.5rem;
+  line-height: 1.4rem;
+  border-radius: var(--mp-radius-sm);
+  color: var(--mp-text-primary);
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: background-color var(--mp-motion-fast) linear;
+}
+
+.md-header__button.mp-lang:is(:hover, :focus) {
+  background-color: var(--mp-border);
+  opacity: 1;
+}
+
 /* 搜索框照客户端文本输入框：乳白底、细边、悬停加深、聚焦转青瓷蓝 */
 @media screen and (min-width: 60em) {
   .md-search__form {
@@ -200,11 +217,9 @@
   font-weight: 600;
 }
 
-/* 节与节之间用细线分组，跟设置页的分组细线同一个做法 */
+/* 节与节之间只靠留白分开，不画线：细线留给页眉、卡片和表格这类结构边界 */
 .md-typeset h2 {
-  margin: 2em 0 0.8em;
-  padding-top: 1.2em;
-  border-top: 1px solid var(--mp-border);
+  margin: 2.2em 0 0.7em;
   font-size: 1.3em;
   font-weight: 600;
 }
@@ -238,6 +253,34 @@
 
 .md-typeset hr {
   border-bottom-color: var(--mp-border);
+}
+
+/* 特点卡片：卡片里的一层，只比外层略沉一点，细边立形；悬停时边线加深，不浮起。
+   正文卡片约 620px 宽，最小列宽 13rem（260px）让桌面排成两列，手机为一列。 */
+.md-typeset .grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+.md-typeset .grid.cards > ul > li {
+  padding: 0.8rem 0.9rem;
+  background-color: var(--mp-surface-sunken);
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius-md);
+  transition: border-color var(--mp-motion-fast) linear;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--mp-border-strong);
+  box-shadow: none;
+}
+
+.md-typeset .grid.cards > ul > li > p:first-child {
+  margin-bottom: 0.4em;
+}
+
+.md-typeset .grid.cards > ul > li > p:last-child {
+  margin-bottom: 0;
+  color: var(--mp-text-secondary);
 }
 
 .md-typeset code {

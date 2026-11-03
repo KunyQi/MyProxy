@@ -1,22 +1,12 @@
 # MyProxy
 
+**简体中文** · [English](README.en.md)
+
 **把复杂留在代码里。用户只管连接。**
 
 自有服务器，三个客户端，一套公开接口。MyProxy 包含 Windows、Android、Linux 客户端和 Python 控制面。首次配对，日常开关。连接参数由部署者预先配置。
 
 本仓库面向自行部署服务器的开发者，当前版本为 0.1.x 公开测试版。开始部署见 [配置与部署](docs/deployment.md)，参与开发见 [贡献指南](CONTRIBUTING.md)，安全报告见 [SECURITY.md](SECURITY.md)。全部文档也可在 [文档站](https://kunyqi.github.io/MyProxy/) 在线浏览和搜索。
-
-## In English
-
-**Keep the complexity in the code. Users just connect.**
-
-MyProxy is a self-hosted VPN with lightweight clients for Windows, Android and Linux, backed by a server you run yourself. A user pairs a device once with a code from the administrator, then simply switches the connection on and off; the server, certificates and connection parameters are configured in advance by whoever deploys it.
-
-- **Clients:** Windows (WPF), Android (Jetpack Compose with libv2ray) and Linux (daemon, CLI and Avalonia tray app), with smart routing and a global mode. No ads.
-- **Server:** keeps the **3x-ui** panel for managing Xray (VLESS + REALITY) and adds a Python control plane: account and device APIs, pairing, an admin interface and SQLite storage.
-- **One entry point:** a single `deployment.json` sets the server address for all three clients and the server.
-
-MyProxy is a public beta (0.1.x) for developers who deploy their own server. The repository ships source code and build inputs only, with no prebuilt installers or hosted service. The project's code and documentation are MIT-licensed; third-party components keep their own licenses (see [third-party notices](THIRD_PARTY_NOTICES.md)). The documentation is in Chinese: start with the [deployment guide](docs/deployment.md), or browse and search it on the [documentation site](https://kunyqi.github.io/MyProxy/).
 
 ## 开发初心
 
@@ -126,14 +116,14 @@ Linux 构建与使用见 [Linux README](linux/MyProxyLinux/README.md)。生产�
 | 16 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Android 协程与异步任务 |
 | 17 | [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | Android JSON 序列化 |
 | 18 | [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/) | Android HTTPS 请求及 I/O |
-| 19 | [Java annotations](https://github.com/JetBrains/java-annotations) | JVM 依赖的注解元数据 |
+| 19 | [JetBrains annotations](https://github.com/JetBrains/java-annotations)、[AndroidX Annotation](https://developer.android.com/jetpack/androidx/releases/annotation) | JVM 依赖的注解元数据 |
 | 20 | [Python / CPython](https://github.com/python/cpython) | Server 标准库运行时和通用工具 |
 | 21 | [SQLite](https://www.sqlite.org/) | Server 的设备、配置与用量存储 |
 | 22 | [nginx](https://github.com/nginx/nginx) | 公网 HTTPS、路由白名单与静态下载页 |
 | 23 | [OpenSSL](https://github.com/openssl/openssl)、[curl](https://github.com/curl/curl) | 部署中的证书检查与 HTTPS 验收 |
 | 24 | [systemd](https://github.com/systemd/systemd)、[GNU Bash](https://www.gnu.org/software/bash/) | Linux 服务、自启与部署脚本 |
 | 25 | [GLib / GSettings](https://docs.gtk.org/gio/class.Settings.html) | GNOME 系统代理设置与恢复 |
-| 26 | [.NET SDK / MSBuild](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | Windows/Linux 编译与发布 |
+| 26 | [.NET SDK](https://github.com/dotnet/sdk)、[MSBuild](https://github.com/dotnet/msbuild) | Windows/Linux 编译与发布 |
 | 27 | [OpenJDK](https://github.com/openjdk/jdk17u)、[Gradle](https://github.com/gradle/gradle) | Android 构建工具链 |
 | 28 | [Android Gradle Plugin](https://android.googlesource.com/platform/tools/base/)、[Android SDK Build Tools](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/) | Android 资源、打包及构建检查 |
 | 29 | [MSTest](https://github.com/microsoft/testfx)、[VSTest](https://github.com/microsoft/vstest) | Windows/Linux 单元与回归测试 |

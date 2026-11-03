@@ -1,0 +1,74 @@
+# MyProxy documentation site (English), built into /en/ next to the Chinese
+# site by .github/workflows/pages.yml. Inherits mkdocs.yml; only language-
+# specific settings are overridden here.
+#
+# Every page is built from its translation next to the original, named with an
+# .en.md suffix (README.en.md, docs/guide/deploy.en.md, ...); see
+# scripts/mkdocs_hooks.py. A page without its translation fails this build.
+
+INHERIT: mkdocs.yml
+
+site_description: >-
+  Self-hosted VPN with one-switch clients for Windows, Android and Linux.
+  Xray VLESS + REALITY, managed through 3x-ui: users enter a pairing code and connect.
+site_url: https://kunyqi.github.io/MyProxy/en/
+site_dir: site/en
+
+# The hook builds every page from its .en.md translation.
+exclude_docs: |
+  *.md
+
+theme:
+  language: en
+  palette:
+    - scheme: classic
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/palette-outline
+        name: Classic · switch to Porcelain
+    - scheme: porcelain
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/palette-outline
+        name: Porcelain · switch to Ceramic
+    - scheme: ceramic
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/palette-outline
+        name: Ceramic · switch to Classic
+
+plugins:
+  - search:
+      lang: en
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - guide/how-it-works.md
+      - guide/deploy.md
+      - guide/clients.md
+      - guide/faq.md
+  - Reference · Deployment and operations:
+      - deployment.md
+      - network-routing.md
+      - server/index.md
+      - server/deployment.md
+      - server/admin-browser-bridge.md
+  - Reference · Clients:
+      - linux/index.md
+      - linux/gui.md
+      - android-core-rebuild.md
+  - Reference · Development and releases:
+      - architecture.md
+      - maintaining.md
+      - release-publishing.md
+      - contributing.md
+  - Reference · Licenses and policies:
+      - Project README: readme.md
+      - third-party.md
+      - third-party-notices.md
+      - security.md
+      - changelog.md

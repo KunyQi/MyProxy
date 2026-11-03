@@ -5,7 +5,7 @@
 使用 Linux 主机，安装 Python 3、systemd、nginx、OpenSSL、curl、3x-ui 与 Xray。SSH 使用显式私钥和已核验的 `known_hosts`；脚本不会下载或安装第三方服务。
 
 1. 修改仓库根 `deployment.json`，例如 `{"api_base_url":"https://api.example.com:8443"}`；生产地址只接受 HTTPS 源站，可省略或保留单个根斜杠，不接受其他路径、查询、片段、凭据或空白。未填写端口使用 443。
-2. 在 3x-ui 建立自己的 VLESS/REALITY inbound、生成密钥和 short ID、设置有效的 SNI。现成 nginx 模板监听全部接口，同一主机上的 API 与 Xray 必须使用不同端口；例如 API 使用 443，Xray inbound 使用 8443。若分别部署在不同主机，可各自使用 443；同机通过不同地址复用端口需自行修改 nginx 监听模板并设置 Xray 绑定地址。`MYPROXY_SERVER_PORT` 只覆盖数据面端口。
+2. 在 3x-ui 建立自己的 VLESS/REALITY inbound、生成密钥和 short ID、设置有效的 SNI。现成 nginx 模板监听全部接口，同一主机上的 API 与 Xray 必须使用不同端口；例如 API 使用 8443（与上一步示例一致），Xray inbound 使用 443。若分别部署在不同主机，可各自使用 443；同机通过不同地址复用端口需自行修改 nginx 监听模板并设置 Xray 绑定地址。`MYPROXY_SERVER_PORT` 只覆盖数据面端口。
 3. 为 API 域名准备公开 CA 签发的完整证书链和私钥。nginx 默认使用 `/etc/letsencrypt/live/<API主机>/fullchain.pem` 和 `privkey.pem`；可显式传入其他绝对路径。续期管理的符号链接允许保留，不复制或改变公网私钥权限。
 4. 为私有后端另备 `/etc/myproxy/tls/server.crt`、`server.key`，可使用自签证书。后端只监听本机回环，文件及父目录不能是符号链接。不要复用公网证书路径。
 

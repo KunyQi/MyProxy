@@ -14,7 +14,7 @@
 | [AndroidX / Compose](https://github.com/androidx/androidx) | Core KTX、Activity Compose、UI/Graphics/Tooling/Preview、Material3、Navigation、Lifecycle Runtime/ViewModel、DataStore；版本及 BOM 见 [version catalog](../android/MyProxyAndroid/gradle/libs.versions.toml) |
 | [Kotlin](https://github.com/JetBrains/kotlin) | 2.4.21，AGP 内置 Kotlin 与 Compose/Serialization 编译插件及标准库 |
 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines)、[kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | 1.11.0 / 1.12.0；Android 异步任务与 JSON |
-| [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/)、[AndroidX annotations](https://developer.android.com/jetpack/androidx/releases/annotation) | OkHttp 5.5.1；Okio 与注解由 Android 依赖树解析 |
+| [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/)、[AndroidX annotations](https://developer.android.com/jetpack/androidx/releases/annotation)、[JetBrains annotations](https://github.com/JetBrains/java-annotations) | OkHttp 5.5.1；Okio 与两组注解由 Android 依赖树解析 |
 | [Python / CPython](https://github.com/python/cpython)、[SQLite](https://www.sqlite.org/) | Server 仅使用 Python 标准库；SQLite 通过 sqlite3 提供，实际版本随 Python/系统构建 |
 | [3x-ui](https://github.com/MHSanaei/3x-ui) | 外部部署集成；保留原面板，适配器读写其设备与配置数据 |
 | [nginx](https://github.com/nginx/nginx)、[OpenSSL](https://github.com/openssl/openssl)、[curl](https://github.com/curl/curl) | 外部 HTTPS 网关、证书验证、下载与验收工具，版本由部署环境记录 |
@@ -36,16 +36,17 @@
 
 ## CI 项目
 
-当前工作流在 [ci-cross-platform.yml](../.github/workflows/ci-cross-platform.yml) 固定 Action commit，使用以下开源工具：
+当前工作流在 [ci-cross-platform.yml](../.github/workflows/ci-cross-platform.yml) 与 [文档站工作流](../.github/workflows/pages.yml) 中固定 Action commit，使用以下开源工具：
 
 - [actions/checkout](https://github.com/actions/checkout)：v5.0.0。
-- [actions/setup-python](https://github.com/actions/setup-python)：v5.6.0。
-- [actions/setup-dotnet](https://github.com/actions/setup-dotnet)：v5.2.0。
-- [actions/setup-java](https://github.com/actions/setup-java)：v5.2.0。
+- [actions/setup-python](https://github.com/actions/setup-python)：v7.0.0。
+- [actions/setup-dotnet](https://github.com/actions/setup-dotnet)：v6.0.0。
+- [actions/setup-java](https://github.com/actions/setup-java)：v6.0.1。
 - [android-actions/setup-android](https://github.com/android-actions/setup-android)：v4。
 - [actions/upload-artifact](https://github.com/actions/upload-artifact)：v4.6.2。
-- [actions/download-artifact](https://github.com/actions/download-artifact)：v5.0.0。
-- [actions/attest](https://github.com/actions/attest)：v4.2.1。
+- [actions/download-artifact](https://github.com/actions/download-artifact)：v8.0.1。
+- [actions/attest](https://github.com/actions/attest)：v4.2.2。
+- [actions/upload-pages-artifact](https://github.com/actions/upload-pages-artifact)、[actions/deploy-pages](https://github.com/actions/deploy-pages)：v5.0.0、v5.0.1，发布文档站。
 - [github/codeql-action](https://github.com/github/codeql-action)：[安全扫描工作流](../.github/workflows/codeql.yml) 固定 v4 对应提交 2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2。
 - [Dependabot](https://github.com/dependabot/dependabot-core)：[更新配置](../.github/dependabot.yml) 跟踪 NuGet、Gradle 与 GitHub Actions。
 

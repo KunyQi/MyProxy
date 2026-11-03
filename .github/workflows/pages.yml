@@ -1,7 +1,8 @@
 name: Documentation site
 
-# Builds the MkDocs site from mkdocs.yml. Its look comes from the client's XAML
-# design tokens, hence the windows/ paths below. Pull requests only build it (so
+# Builds the MkDocs site in Chinese (mkdocs.yml, site root) and English
+# (mkdocs.en.yml, /en/). Its look comes from the client's XAML design tokens,
+# hence the windows/ paths below. Pull requests only build it (so
 # a broken link fails review); pushes to main also publish it to GitHub Pages.
 
 on:
@@ -20,6 +21,9 @@ on:
       - linux/MyProxyLinux/gui/README.md
       - windows/MyProxy/Themes/*.xaml
       - windows/MyProxy/Assets/app.svg
+      - '**.en.md'
+      - mkdocs.en.yml
+      - docs-theme/**
       - mkdocs.yml
       - scripts/mkdocs_hooks.py
       - scripts/docs-requirements.txt
@@ -38,6 +42,9 @@ on:
       - linux/MyProxyLinux/gui/README.md
       - windows/MyProxy/Themes/*.xaml
       - windows/MyProxy/Assets/app.svg
+      - '**.en.md'
+      - mkdocs.en.yml
+      - docs-theme/**
       - mkdocs.yml
       - scripts/mkdocs_hooks.py
       - scripts/docs-requirements.txt
@@ -71,8 +78,10 @@ jobs:
       - name: Install pinned documentation toolchain
         run: python -m pip install --require-hashes -r scripts/docs-requirements.txt
 
-      - name: Build site (strict)
-        run: python -m mkdocs build --strict
+      - name: Build Chinese and English sites (strict)
+        run: |
+          python -m mkdocs build --strict
+          python -m mkdocs build --strict -f mkdocs.en.yml
 
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

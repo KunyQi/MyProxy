@@ -6,6 +6,18 @@
 
 本仓库面向自行部署服务器的开发者，当前版本为 0.1.x 公开测试版。开始部署见 [配置与部署](docs/deployment.md)，参与开发见 [贡献指南](CONTRIBUTING.md)，安全报告见 [SECURITY.md](SECURITY.md)。全部文档也可在 [文档站](https://kunyqi.github.io/MyProxy/) 在线浏览和搜索。
 
+## In English
+
+**Keep the complexity in the code. Users just connect.**
+
+MyProxy is a self-hosted VPN with lightweight clients for Windows, Android and Linux, backed by a server you run yourself. A user pairs a device once with a code from the administrator, then simply switches the connection on and off; the server, certificates and connection parameters are configured in advance by whoever deploys it.
+
+- **Clients:** Windows (WPF), Android (Jetpack Compose with libv2ray) and Linux (daemon, CLI and Avalonia tray app), with smart routing and a global mode. No ads.
+- **Server:** keeps the **3x-ui** panel for managing Xray (VLESS + REALITY) and adds a Python control plane: account and device APIs, pairing, an admin interface and SQLite storage.
+- **One entry point:** a single `deployment.json` sets the server address for all three clients and the server.
+
+MyProxy is a public beta (0.1.x) for developers who deploy their own server. The repository ships source code and build inputs only, with no prebuilt installers or hosted service. The project's code and documentation are MIT-licensed; third-party components keep their own licenses (see [third-party notices](THIRD_PARTY_NOTICES.md)). The documentation is in Chinese: start with the [deployment guide](docs/deployment.md), or browse and search it on the [documentation site](https://kunyqi.github.io/MyProxy/).
+
 ## 开发初心
 
 起点很简单：自建 VPN 时，开源工具已经具备足够的能力，普通用户却还要理解协议、地址和配置，才能获得商业 VPN 那样简单的使用体验。MyProxy 要补上这段距离。

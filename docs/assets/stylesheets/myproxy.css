@@ -1,0 +1,395 @@
+/*
+ * MyProxy 文档站样式：沿用客户端的「瓷感」设计语言。
+ *
+ * 颜色、圆角、动效时长、阴影和字体都不在这里写死。构建时由
+ * scripts/mkdocs_hooks.py 从客户端的 windows/MyProxy/Themes/*.xaml 读出，
+ * 生成 assets/stylesheets/tokens.css 里的 --mp-* 变量，一套皮肤一组：
+ * 经典（classic）、瓷白（porcelain）、釉陶（ceramic），对应页眉的切换按钮。
+ *
+ * 本文件只把这些变量映射到 Material 主题，并照搬客户端的几条规则：
+ *   - 低饱和；层与层之间只差一点明度，靠 1px 细线 + 弱阴影立形；
+ *   - 页眉、抽屉标题不是色块，而是底色 + 细线；
+ *   - 青瓷蓝（Accent）是唯一的交互色，用作文字时取 AccentText；
+ *   - 悬停是底色淡入（Motion.Duration.Fast，线性，不加缓动）；
+ *   - 焦点环是 1px 文字色。
+ */
+
+[data-md-color-scheme="classic"],
+[data-md-color-scheme="porcelain"],
+[data-md-color-scheme="ceramic"] {
+  --md-primary-fg-color: var(--mp-background);
+  --md-primary-fg-color--light: var(--mp-surface);
+  --md-primary-fg-color--dark: var(--mp-background);
+  --md-primary-bg-color: var(--mp-text-primary);
+  --md-primary-bg-color--light: var(--mp-text-secondary);
+
+  --md-accent-fg-color: var(--mp-accent-text);
+  --md-accent-fg-color--transparent: color-mix(in srgb, var(--mp-accent) 12%, transparent);
+  --md-accent-bg-color: var(--mp-surface);
+  --md-accent-bg-color--light: var(--mp-surface);
+
+  --md-default-fg-color: var(--mp-text-primary);
+  --md-default-fg-color--light: var(--mp-text-secondary);
+  --md-default-fg-color--lighter: var(--mp-text-disabled);
+  --md-default-fg-color--lightest: var(--mp-border);
+  --md-default-bg-color: var(--mp-surface);
+  --md-default-bg-color--light: color-mix(in srgb, var(--mp-surface) 70%, transparent);
+  --md-default-bg-color--lighter: color-mix(in srgb, var(--mp-surface) 30%, transparent);
+  --md-default-bg-color--lightest: color-mix(in srgb, var(--mp-surface) 12%, transparent);
+
+  --md-typeset-color: var(--mp-text-primary);
+  --md-typeset-a-color: var(--mp-accent-text);
+  --md-typeset-mark-color: color-mix(in srgb, var(--mp-accent) 22%, transparent);
+  --md-typeset-table-color: var(--mp-border);
+  --md-typeset-table-color--light: var(--mp-surface-sunken);
+
+  /* 代码高亮也守低饱和：只用客户端已有的语义文字色 */
+  --md-code-fg-color: var(--mp-text-primary);
+  --md-code-bg-color: var(--mp-surface-sunken);
+  --md-code-hl-color: var(--mp-accent);
+  --md-code-hl-color--light: color-mix(in srgb, var(--mp-accent) 14%, transparent);
+  --md-code-hl-keyword-color: var(--mp-accent-text);
+  --md-code-hl-special-color: var(--mp-accent-text);
+  --md-code-hl-function-color: var(--mp-accent-text);
+  --md-code-hl-string-color: var(--mp-success-text);
+  --md-code-hl-number-color: var(--mp-error-text);
+  --md-code-hl-constant-color: var(--mp-error-text);
+  --md-code-hl-name-color: var(--mp-text-primary);
+  --md-code-hl-variable-color: var(--mp-text-primary);
+  --md-code-hl-operator-color: var(--mp-text-secondary);
+  --md-code-hl-punctuation-color: var(--mp-text-secondary);
+  --md-code-hl-comment-color: var(--mp-text-secondary);
+  --md-code-hl-generic-color: var(--mp-text-secondary);
+
+  --md-footer-fg-color: var(--mp-text-primary);
+  --md-footer-fg-color--light: var(--mp-text-secondary);
+  --md-footer-fg-color--lighter: var(--mp-text-secondary);
+  --md-footer-bg-color: var(--mp-background);
+  --md-footer-bg-color--dark: var(--mp-background);
+
+  --md-shadow-z1: var(--mp-shadow-contact);
+  --md-shadow-z2: var(--mp-shadow-contact), var(--mp-shadow-ambient);
+  --md-shadow-z3: var(--mp-shadow-contact), var(--mp-shadow-ambient);
+
+  /* 客户端字体（Segoe UI + 微软雅黑 UI）在前；不加载任何网络字体 */
+  --md-text-font-family: var(--mp-font-family);
+  --md-code-font-family: "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo,
+    "Noto Sans Mono", "Microsoft YaHei UI", monospace;
+
+  background-color: var(--mp-background);
+}
+
+[data-md-color-scheme] ::selection {
+  background-color: color-mix(in srgb, var(--mp-accent) 24%, transparent);
+}
+
+/* 焦点环：1px 文字色，与客户端 FocusRingStyle 一致 */
+[data-md-color-scheme] :focus-visible {
+  outline: 1px solid var(--mp-text-primary);
+  outline-offset: 1px;
+  border-radius: var(--mp-radius-sm);
+}
+
+/* ============ 页眉：底色 + 一条细线 ============ */
+
+.md-header,
+.md-header--shadow {
+  box-shadow: 0 1px 0 var(--mp-border);
+}
+
+.md-header__topic:first-child {
+  font-weight: 600;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.3rem;
+  border-radius: 2px;
+}
+
+/* 搜索框照客户端文本输入框：乳白底、细边、悬停加深、聚焦转青瓷蓝 */
+@media screen and (min-width: 60em) {
+  .md-search__form {
+    background-color: var(--mp-surface);
+    border-radius: var(--mp-radius-sm);
+    box-shadow: inset 0 0 0 1px var(--mp-border);
+    transition: box-shadow var(--mp-motion-fast) linear;
+  }
+
+  .md-search__form:hover {
+    background-color: var(--mp-surface);
+    box-shadow: inset 0 0 0 1px var(--mp-border-strong);
+  }
+
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+    background-color: var(--mp-surface);
+    border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0;
+    box-shadow: inset 0 0 0 1px var(--mp-accent);
+  }
+
+  .md-search__input {
+    font-size: 0.7rem;
+  }
+
+  .md-search__input::placeholder,
+  .md-search__input ~ .md-search__icon {
+    color: var(--mp-text-secondary);
+  }
+
+  .md-search__output {
+    border-radius: 0 0 var(--mp-radius-sm) var(--mp-radius-sm);
+    box-shadow: var(--mp-shadow-contact), var(--mp-shadow-ambient);
+  }
+}
+
+.md-search-result__meta {
+  background-color: var(--mp-surface-sunken);
+  color: var(--mp-text-secondary);
+}
+
+/* ============ 正文：乳白卡片浮在底色上 ============ */
+
+.md-main .md-content__inner {
+  margin: 1.2rem 0.8rem 1.6rem;
+  padding: 1.2rem 1.6rem 1.6rem;
+  background-color: var(--mp-surface);
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius-lg);
+  box-shadow: var(--mp-shadow-contact), var(--mp-shadow-ambient);
+}
+
+.md-main .md-content__inner::before {
+  display: none;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-main .md-content__inner {
+    margin: 0.6rem 0.4rem 1.2rem;
+    padding: 0.8rem 0.8rem 1.2rem;
+  }
+}
+
+.md-content__button {
+  color: var(--mp-text-secondary);
+  transition: color var(--mp-motion-fast) linear;
+}
+
+.md-content__button:hover {
+  color: var(--mp-accent-text);
+}
+
+/* ============ 排版 ============ */
+
+.md-typeset {
+  font-size: 0.75rem;
+  line-height: 1.75;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  color: var(--mp-text-primary);
+  letter-spacing: 0;
+}
+
+/* 页面标题照 PageTitleTextStyle：SemiBold */
+.md-typeset h1 {
+  margin: 0 0 1em;
+  font-size: 1.6em;
+  font-weight: 600;
+}
+
+/* 节与节之间用细线分组，跟设置页的分组细线同一个做法 */
+.md-typeset h2 {
+  margin: 2em 0 0.8em;
+  padding-top: 1.2em;
+  border-top: 1px solid var(--mp-border);
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.md-typeset h3 {
+  margin: 1.6em 0 0.6em;
+  font-size: 1.1em;
+  font-weight: 500;
+}
+
+.md-typeset h4 {
+  font-weight: 500;
+}
+
+.md-typeset a:not(.headerlink):not(.md-button) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, var(--mp-accent-text) 35%, transparent);
+  transition: color var(--mp-motion-fast) linear, text-decoration-color var(--mp-motion-fast) linear;
+}
+
+.md-typeset a:not(.headerlink):not(.md-button):is(:hover, :focus) {
+  color: var(--mp-accent-text);
+  text-decoration-color: currentcolor;
+}
+
+.md-typeset .headerlink {
+  color: var(--mp-text-disabled);
+}
+
+.md-typeset hr {
+  border-bottom-color: var(--mp-border);
+}
+
+.md-typeset code {
+  border-radius: var(--mp-radius-sm);
+}
+
+.md-typeset pre > code {
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius-md);
+}
+
+.md-typeset table:not([class]) {
+  font-size: 0.7rem;
+  background-color: var(--mp-surface);
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius-md);
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--mp-surface-sunken);
+  color: var(--mp-text-primary);
+  font-weight: 500;
+}
+
+.md-typeset table:not([class]) tbody tr {
+  transition: background-color var(--mp-motion-fast) linear;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: color-mix(in srgb, var(--mp-surface-sunken) 60%, transparent);
+  box-shadow: none;
+}
+
+/* ============ 侧栏与目录：照客户端文字链接按钮 ============ */
+
+/* 分组标题照 SectionLabelTextStyle：13px、常规字重、次级文字色 */
+.md-nav__title,
+.md-nav__item--section > .md-nav__link {
+  color: var(--mp-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 400;
+}
+
+.md-nav--secondary .md-nav__link {
+  color: var(--mp-text-secondary);
+}
+
+.md-nav__item .md-nav__link--active {
+  color: var(--mp-accent-text);
+  font-weight: 500;
+}
+
+/* 侧栏吸顶标题：与页面底色一致，不留一条白带 */
+@media screen and (min-width: 60em) {
+  .md-nav--secondary .md-nav__title {
+    background: var(--mp-background);
+    box-shadow: 0 0 0.4rem 0.4rem var(--mp-background);
+  }
+
+  .md-nav--secondary .md-nav__link {
+    margin-top: 0.2rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--mp-radius-sm);
+    transition: background-color var(--mp-motion-fast) linear, color var(--mp-motion-fast) linear;
+  }
+
+  .md-nav--secondary .md-nav__link[href]:is(:hover, :focus) {
+    color: var(--mp-text-primary);
+    background-color: var(--mp-border);
+  }
+
+  .md-nav--secondary .md-nav__link--active:is(:hover, :focus) {
+    color: var(--mp-accent-text);
+  }
+}
+
+@media screen and (min-width: 76.25em) {
+  .md-nav--primary .md-nav__title {
+    background: var(--mp-background);
+    box-shadow: 0 0 0.4rem 0.4rem var(--mp-background);
+  }
+
+  .md-nav--primary .md-nav__link {
+    margin-top: 0.2rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--mp-radius-sm);
+    transition: background-color var(--mp-motion-fast) linear, color var(--mp-motion-fast) linear;
+  }
+
+  /* 悬停：Border 色底淡入，文字不变色——客户端 TextLinkButton 的做法 */
+  .md-nav--primary .md-nav__link:is([href], [for]):is(:hover, :focus) {
+    color: var(--mp-text-primary);
+    background-color: var(--mp-border);
+  }
+
+  /* 分组标题只是标签，不响应悬停 */
+  .md-nav--primary .md-nav__item--section > .md-nav__link:is(:hover, :focus) {
+    color: var(--mp-text-secondary);
+    background-color: transparent;
+  }
+
+  /* 当前页：乳白拨块嵌在底色上，像客户端模式开关的拨块 */
+  .md-nav--primary .md-nav__link--active,
+  .md-nav--primary .md-nav__link--active:is(:hover, :focus) {
+    color: var(--mp-accent-text);
+    background-color: var(--mp-surface);
+    box-shadow: inset 0 0 0 1px var(--mp-border);
+  }
+}
+
+/* 移动端抽屉：标题区是底色 + 细线；行之间不画分隔线（客户端设置行也不画） */
+@media screen and (max-width: 76.2344em) {
+  .md-nav--primary .md-nav__title {
+    background-color: var(--mp-background);
+    box-shadow: inset 0 -1px 0 var(--mp-border);
+  }
+
+  .md-nav--primary .md-nav__title[for="__drawer"] {
+    color: var(--mp-text-primary);
+    font-weight: 600;
+  }
+
+  .md-nav--primary .md-nav__item {
+    border-top: 0;
+  }
+
+  .md-nav__source {
+    color: var(--mp-text-primary);
+    background-color: var(--mp-background);
+    box-shadow: inset 0 -1px 0 var(--mp-border);
+  }
+}
+
+/* ============ 页脚与返回顶部 ============ */
+
+.md-footer {
+  box-shadow: inset 0 1px 0 var(--mp-border);
+}
+
+.md-footer__title,
+.md-footer-meta,
+.md-copyright {
+  color: var(--mp-text-secondary);
+}
+
+.md-top {
+  color: var(--mp-text-primary);
+  background-color: var(--mp-surface);
+  box-shadow: inset 0 0 0 1px var(--mp-border), var(--mp-shadow-contact), var(--mp-shadow-ambient);
+}
+
+.md-top:is(:hover, :focus) {
+  color: var(--mp-accent-text);
+  background-color: var(--mp-surface);
+}

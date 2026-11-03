@@ -14,7 +14,7 @@
 | [AndroidX / Compose](https://github.com/androidx/androidx) | Core KTX、Activity Compose、UI/Graphics/Tooling/Preview、Material3、Navigation、Lifecycle Runtime/ViewModel、DataStore；版本及 BOM 见 [version catalog](../android/MyProxyAndroid/gradle/libs.versions.toml) |
 | [Kotlin](https://github.com/JetBrains/kotlin) | 2.4.20，AGP 内置 Kotlin 与 Compose/Serialization 编译插件及标准库 |
 | [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines)、[kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | 1.9.0 / 1.7.3；Android 异步任务与 JSON |
-| [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/)、[Java annotations](https://github.com/JetBrains/java-annotations) | OkHttp 4.12.0；Okio 与注解由 JVM 依赖树解析 |
+| [OkHttp](https://square.github.io/okhttp/)、[Okio](https://square.github.io/okio/)、[AndroidX annotations](https://developer.android.com/jetpack/androidx/releases/annotation) | OkHttp 5.5.0；Okio 与注解由 Android 依赖树解析 |
 | [Python / CPython](https://github.com/python/cpython)、[SQLite](https://www.sqlite.org/) | Server 仅使用 Python 标准库；SQLite 通过 sqlite3 提供，实际版本随 Python/系统构建 |
 | [3x-ui](https://github.com/MHSanaei/3x-ui) | 外部部署集成；保留原面板，适配器读写其设备与配置数据 |
 | [nginx](https://github.com/nginx/nginx)、[OpenSSL](https://github.com/openssl/openssl)、[curl](https://github.com/curl/curl) | 外部 HTTPS 网关、证书验证、下载与验收工具，版本由部署环境记录 |

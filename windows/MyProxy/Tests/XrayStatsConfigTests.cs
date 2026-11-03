@@ -81,7 +81,7 @@ public sealed class XrayStatsConfigTests
             r => r.InboundTag is not null && r.InboundTag.Contains(XrayConfigGenerator.ProbeInboundTag)));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(ProxyMode.Rule)]
     [DataRow(ProxyMode.Global)]
     public void ProbeInbound_IsForcedIntoTheProxyAheadOfEveryDomainOrIpRule(ProxyMode mode)
@@ -132,7 +132,7 @@ public sealed class XrayStatsConfigTests
     {
         foreach (int bad in new[] { 80, 70000, LocalPort, ApiPort })
         {
-            Assert.ThrowsException<ArgumentException>(
+            Assert.ThrowsExactly<ArgumentException>(
                 () => XrayConfigGenerator.Generate(
                     ValidProfile(), ProxyMode.Rule, LocalPort, @"C:\tmp\xray.log",
                     statsApiPort: ApiPort, probePort: bad),
@@ -164,7 +164,7 @@ public sealed class XrayStatsConfigTests
     [TestMethod]
     public void ApiPortCollidingWithLocalPort_IsRejected()
     {
-        Assert.ThrowsException<ArgumentException>(() => Generate(LocalPort));
+        Assert.ThrowsExactly<ArgumentException>(() => Generate(LocalPort));
     }
 
     [TestMethod]

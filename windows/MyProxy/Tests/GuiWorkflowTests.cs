@@ -69,7 +69,7 @@ public sealed class GuiWorkflowTests
     /// 此前两者共用一个 HasInputError，任何失败都会让输入框变红，红框于是不再
     /// 是信息，而是噪声。
     /// </param>
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(ErrorCode.PairingInvalid, true)]
     [DataRow(ErrorCode.PairingExpired, true)]
     [DataRow(ErrorCode.ApiUnreachable, false)]
@@ -171,7 +171,7 @@ public sealed class GuiWorkflowTests
         Assert.AreEqual(Visibility.Visible, hover.Visibility);
     });
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(AppState.Unbound, false, false, "启动")]
     [DataRow(AppState.Disconnected, true, false, "启动")]
     [DataRow(AppState.Connecting, false, false, "正在启动")]
@@ -281,7 +281,7 @@ public sealed class GuiWorkflowTests
         Assert.AreEqual(Visibility.Collapsed, model.LatencyTextVisibility);
     });
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(UpdateCheckStatus.Failed, false)]
     [DataRow(UpdateCheckStatus.UpToDate, true)]
     [DataRow(UpdateCheckStatus.UpdateAvailable, false)]

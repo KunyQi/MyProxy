@@ -37,7 +37,7 @@ public sealed class ConnectionCheckTests
         Assert.IsTrue(result.BestLatencyMs <= result.LatencyMs, "最快值不可能大于中位数");
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("203.0.113.10", "203.0.113.10")]
     [DataRow("2001:db8::10", "2001:0db8:0:0:0:0:0:10")]
     public async Task EchoedIpMatchesKnownProxyEgress_IsVerified(string knownEgress, string observedEgress)
@@ -48,7 +48,7 @@ public sealed class ConnectionCheckTests
         Assert.AreEqual(EgressVerdict.Verified, result.Egress);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("203.0.113.10", "203.0.113.7")]
     [DataRow("203.0.113.10", "2001:db8::7")]
     [DataRow("2001:db8::10", "203.0.113.7")]
@@ -64,7 +64,7 @@ public sealed class ConnectionCheckTests
         Assert.IsNotNull(result.LatencyMs);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(null)]
     [DataRow("")]
     [DataRow("vps.example.com")]

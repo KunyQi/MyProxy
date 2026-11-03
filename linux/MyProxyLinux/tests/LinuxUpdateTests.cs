@@ -61,7 +61,7 @@ public sealed class LinuxUpdateTests
 
             // 产物是我们自己打的包，里面本来就不该有链接与非常规路径；
             // 拒绝的粒度是「整包拒绝」，不是「跳过这一条」。
-            Assert.ThrowsException<InvalidDataException>(
+            Assert.ThrowsExactly<InvalidDataException>(
                 () => LinuxUpdateInstaller.ExtractArchive(archive, destination),
                 $"应当拒绝：{name}");
         }

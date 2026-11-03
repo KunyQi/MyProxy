@@ -33,11 +33,11 @@ public sealed class WindowsProxyRestoreRetryTests
         fixture.Service.CaptureCurrentSettings();
         File.WriteAllText(fixture.BackupPath, "{}");
 
-        Assert.ThrowsException<InvalidDataException>(
+        Assert.ThrowsExactly<InvalidDataException>(
             () => fixture.Service.PersistSnapshotForCrashRecovery());
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true, false, true, false)]
     [DataRow(true, false, false, true)]
     [DataRow(true, false, true, true)]
@@ -82,7 +82,7 @@ public sealed class WindowsProxyRestoreRetryTests
         Assert.IsFalse(File.Exists(fixture.BackupPath));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
     public async Task Restore_RetriesRefreshBeforeDeletingEvidence(bool keepBackup)
@@ -91,7 +91,7 @@ public sealed class WindowsProxyRestoreRetryTests
         await fixture.EnableAsync(keepBackup);
         fixture.Platform.FailRefresh = true;
 
-        await Assert.ThrowsExceptionAsync<Win32Exception>(
+        await Assert.ThrowsExactlyAsync<Win32Exception>(
             () => fixture.Service.RestoreAsync(CancellationToken.None));
         Assert.AreEqual(0, fixture.Platform.Registry.ProxyEnable);
         Assert.AreEqual(1, fixture.Platform.Cached.ProxyEnable);
@@ -106,7 +106,7 @@ public sealed class WindowsProxyRestoreRetryTests
         Assert.IsFalse(File.Exists(fixture.BackupPath));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
     public async Task Restore_RepeatedRefreshFailurePreservesEvidence(bool keepBackup)
@@ -117,7 +117,7 @@ public sealed class WindowsProxyRestoreRetryTests
 
         for (int attempt = 0; attempt < 2; attempt++)
         {
-            await Assert.ThrowsExceptionAsync<Win32Exception>(
+            await Assert.ThrowsExactlyAsync<Win32Exception>(
                 () => fixture.Service.RestoreAsync(CancellationToken.None));
             fixture.AssertEvidence(keepBackup);
             Assert.AreEqual(0, fixture.Platform.Registry.ProxyEnable);

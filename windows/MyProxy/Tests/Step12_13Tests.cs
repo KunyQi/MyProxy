@@ -215,7 +215,7 @@ public sealed class Step12_13Tests
         Assert.AreEqual(1, server.RequestCount);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("503 Service Unavailable", "")]
     [DataRow("200 OK", "")]
     [DataRow("200 OK", "not-json")]
@@ -239,7 +239,7 @@ public sealed class Step12_13Tests
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
 
-        await Assert.ThrowsExceptionAsync<TaskCanceledException>(() => service.CheckAsync(cancel.Token));
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(() => service.CheckAsync(cancel.Token));
     }
 
     private sealed class UpdateStubServer : IDisposable

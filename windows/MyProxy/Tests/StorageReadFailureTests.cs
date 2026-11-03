@@ -26,7 +26,7 @@ public sealed class StorageReadFailureTests
             string path = Path.Combine(dataRoot, "device.dat");
             using (File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None))
             {
-                Assert.ThrowsException<SecureStorageReadException>(() => storage.LoadDevice());
+                Assert.ThrowsExactly<SecureStorageReadException>(() => storage.LoadDevice());
             }
 
             // 占用解除后仍是同一个绑定，凭据没有被任何一步覆盖。

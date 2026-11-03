@@ -50,13 +50,13 @@ public sealed class ConnectionStateMachineTests
     [TestMethod]
     public void IllegalTransitions_Throw()
     {
-        Assert.ThrowsException<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => new ConnectionStateMachine().Transition(ConnectionStateEvent.Start));
-        Assert.ThrowsException<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => TransitionFrom(AppState.Disconnected, ConnectionStateEvent.Success));
-        Assert.ThrowsException<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => TransitionFrom(AppState.Disconnecting, ConnectionStateEvent.Start));
-        Assert.ThrowsException<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => TransitionFrom(AppState.Unbound, ConnectionStateEvent.Retry));
     }
 

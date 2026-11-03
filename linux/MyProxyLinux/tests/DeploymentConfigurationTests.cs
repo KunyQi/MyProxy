@@ -19,7 +19,7 @@ public sealed class DeploymentConfigurationTests
     public void ExampleDeployment_FailsBeforeCreatingAClient()
     {
         using var endpoint = new ApiEndpoint(BindingTarget.FromBaseUrl("https://api.example.invalid"));
-        MyProxyException exception = Assert.ThrowsException<MyProxyException>(() => endpoint.Client("claim", TimeSpan.FromSeconds(1)));
+        MyProxyException exception = Assert.ThrowsExactly<MyProxyException>(() => endpoint.Client("claim", TimeSpan.FromSeconds(1)));
         Assert.AreEqual(ErrorCode.ServerNotConfigured, exception.ErrorCode);
     }
 }

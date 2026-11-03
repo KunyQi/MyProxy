@@ -109,7 +109,7 @@ public sealed class NetworkServiceTests
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
         var service = new NetworkService(testUrlsOverride: new[] { StubUrl, "http://myproxy.test.invalid/other" });
-        await Assert.ThrowsExceptionAsync<OperationCanceledException>(
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(
             () => service.TestThroughProxyAsync("127.0.0.1", stub.Port, cancel.Token));
         Assert.AreEqual(0, stub.RequestCount);
     }

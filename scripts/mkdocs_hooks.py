@@ -2,10 +2,20 @@
 
 The site's own pages (home page and guides) live in docs/. It also publishes
 the technical Markdown that already lives across the repository -- the README,
-policy files, docs/ and component READMEs -- without moving or duplicating it.  Each published file is mapped from its repository path to a
-site path, and relative links are rewritten so they keep working on the site:
+policy files, docs/ and component READMEs -- without moving or duplicating it.
 
-* a link to another published page points at that page on the site;
+The site is built twice from the same page list: in Chinese from the original
+files (mkdocs.yml, served at the site root) and in English from translations
+kept next to them with an ".en.md" suffix (mkdocs.en.yml, served under /en/).
+Both builds share one set of site paths, so the header language button opens
+the same page in the other language. A page without its translation fails the
+English build.
+
+Relative links are rewritten so they keep working on the site:
+
+* a link to another published page points at that page in the current
+  language; a link that names the other language's file (README.md from an
+  English page, README.en.md from a Chinese one) points at the other site;
 * a link to any other repository file or folder points at it on GitHub.
 
 The "edit this page" button points at the page's real file in the repository.
@@ -24,15 +34,18 @@ import posixpath
 import re
 from pathlib import Path
 
-from mkdocs.structure.files import File
+from mkdocs.structure.files import File, InclusionLevel
 
 REPO_URL = "https://github.com/KunyQi/MyProxy"
 BRANCH = "main"
 ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = "docs"
+SOURCE_LANG = "zh"
+EN_SUFFIX = ".en.md"
 
-# Repository path -> site source path, for pages outside docs/. The site's
-# own home page is docs/index.md; the README is published as a reference page.
+# Repository path -> site path, for pages outside docs/ (docs/**/*.md keep
+# their own relative paths). The site's home page is docs/index.md; the README
+# is published as a reference page.
 EXTRA_PAGES = {
     "README.md": "readme.md",
     "CHANGELOG.md": "changelog.md",
@@ -45,6 +58,8 @@ EXTRA_PAGES = {
     "linux/MyProxyLinux/README.md": "linux/index.md",
     "linux/MyProxyLinux/gui/README.md": "linux/gui.md",
 }
+# Already written in English: both languages publish the same file.
+SHARED_PAGES = {"THIRD_PARTY_NOTICES.md"}
 
 # Site colour scheme -> the client skin's token file (see windows/MyProxy/Core/UiTheme.cs:
 # Classic is shown as 经典, Porcelain as 瓷白, Ceramic as 釉陶).
@@ -74,20 +89,44 @@ _FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 # Inline links and images: ](target) or ](target "title")
 _LINK = re.compile(r'\]\(([^)\s]+)(\s+"[^"]*")?\)')
 
+_lang = SOURCE_LANG
+_alternates: dict[str, str] = {}
 _repo_to_site: dict[str, str] = {}
 _site_to_repo: dict[str, str] = {}
+_site_to_source: dict[str, str] = {}
 
 
 def on_files(files, config):
-    """Register pages outside docs/, the client design tokens and the app icon."""
+    """Register every published page in this build's language, the design tokens and the icon."""
+    global _lang, _alternates
+    _lang = config.theme["language"]
+    _alternates = {alt["lang"]: alt["link"] for alt in config.extra.get("alternate") or []}
+    if _lang not in _alternates:
+        raise ValueError(f"extra.alternate has no entry for the build language {_lang!r}")
     _repo_to_site.clear()
     _site_to_repo.clear()
-    for file in files.documentation_pages():
-        _register(f"{DOCS_DIR}/{file.src_uri}", file.src_uri)
-    for repo_path, site_path in EXTRA_PAGES.items():
-        content = (ROOT / repo_path).read_text(encoding="utf-8")
-        _add(files, File.generated(config, site_path, content=content), repo_path)
-        _register(repo_path, site_path)
+    _site_to_source.clear()
+    for repo_path, site_path in site_pages().items():
+        source = _source_path(repo_path)
+        existing = files.get_file_from_path(site_path)
+        if existing is not None and not existing.inclusion.is_excluded():
+            # A docs/ page MkDocs already loaded is used as is; anything else is a clash.
+            if source != f"{DOCS_DIR}/{site_path}":
+                raise ValueError(f"{site_path} in {DOCS_DIR}/ would shadow {source}")
+        else:
+            if existing is not None:
+                files.remove(existing)
+            path = ROOT / source
+            if not path.is_file():
+                raise ValueError(f"missing translation {source} for {repo_path}")
+            # Explicitly included: MkDocs re-applies exclude_docs after on_files, and the
+            # English build excludes every native *.md.
+            page = File.generated(config, site_path, content=path.read_text(encoding="utf-8"),
+                                  inclusion=InclusionLevel.INCLUDED)
+            files.append(page)
+        _repo_to_site[repo_path] = site_path
+        _site_to_repo[site_path] = repo_path
+        _site_to_source[site_path] = source
     _add(files, File.generated(config, SITE_TOKENS, content=design_tokens_css()), "client design tokens")
     _add(files, File.generated(config, SITE_ICON, abs_src_path=str(ROOT / APP_ICON)), APP_ICON)
     return files
@@ -97,8 +136,34 @@ def on_page_markdown(markdown, page, config, files):
     repo_path = _site_to_repo.get(page.file.src_uri)
     if repo_path is None:
         return markdown
-    page.edit_url = f"{REPO_URL}/edit/{BRANCH}/{repo_path}"
+    page.edit_url = f"{REPO_URL}/edit/{BRANCH}/{_site_to_source[page.file.src_uri]}"
     return _rewrite_links(markdown, repo_path, page.file.src_uri)
+
+
+def site_pages() -> dict[str, str]:
+    """Repository path of each published page (in the source language) -> its site path."""
+    pages = {}
+    for path in sorted((ROOT / DOCS_DIR).rglob("*.md")):
+        relative = path.relative_to(ROOT / DOCS_DIR).as_posix()
+        if not relative.endswith(EN_SUFFIX):
+            pages[f"{DOCS_DIR}/{relative}"] = relative
+    pages.update(EXTRA_PAGES)
+    return pages
+
+
+def _source_path(repo_path: str) -> str:
+    if _lang == SOURCE_LANG or repo_path in SHARED_PAGES:
+        return repo_path
+    return repo_path[: -len(".md")] + EN_SUFFIX
+
+
+def _page_url(site_path: str) -> str:
+    """Directory-style URL of a page, relative to its language's site root."""
+    if site_path == "index.md":
+        return ""
+    if site_path.endswith("/index.md"):
+        return site_path[: -len("index.md")]
+    return site_path[: -len(".md")] + "/"
 
 
 def design_tokens_css() -> str:
@@ -164,11 +229,6 @@ def _add(files, file, source: str) -> None:
     files.append(file)
 
 
-def _register(repo_path: str, site_path: str) -> None:
-    _repo_to_site[repo_path] = site_path
-    _site_to_repo[site_path] = repo_path
-
-
 def _rewrite_links(markdown: str, repo_path: str, site_path: str) -> str:
     lines = markdown.split("\n")
     fence = None
@@ -196,12 +256,23 @@ def _resolve(target: str, repo_path: str, site_path: str) -> str:
     if _SCHEME.match(target) or target.startswith(("#", "/")):
         return target
     path, hash_mark, anchor = target.partition("#")
+    # Translations sit next to their originals, so links resolve from the original's folder.
     resolved = posixpath.normpath(posixpath.join(posixpath.dirname(repo_path), path))
     if resolved.startswith(".."):
         return target
-    if resolved in _repo_to_site:
-        start = posixpath.dirname(site_path) or "."
-        return posixpath.relpath(_repo_to_site[resolved], start) + hash_mark + anchor
+    page, lang = resolved, SOURCE_LANG
+    if resolved.endswith(EN_SUFFIX):
+        page, lang = resolved[: -len(EN_SUFFIX)] + ".md", "en"
+    elif page in SHARED_PAGES or repo_path in SHARED_PAGES:
+        # A page shared by both languages, or a plain link written on one, stays
+        # in the language being read.
+        lang = _lang
+    if page in _repo_to_site:
+        target_site = _repo_to_site[page]
+        if lang == _lang:
+            start = posixpath.dirname(site_path) or "."
+            return posixpath.relpath(target_site, start) + hash_mark + anchor
+        return _alternates[lang] + _page_url(target_site) + hash_mark + anchor
     absolute = ROOT / resolved
     if not absolute.exists():
         # Leave it alone so the strict build reports the broken link.

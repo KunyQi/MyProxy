@@ -107,6 +107,23 @@
   border-radius: 2px;
 }
 
+/* 语言切换：一个文字按钮，照客户端 TextLinkButton——文字色，悬停时 Border 色底淡入 */
+.md-header__button.mp-lang {
+  margin: 0 0.2rem;
+  padding: 0 0.5rem;
+  line-height: 1.4rem;
+  border-radius: var(--mp-radius-sm);
+  color: var(--mp-text-primary);
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: background-color var(--mp-motion-fast) linear;
+}
+
+.md-header__button.mp-lang:is(:hover, :focus) {
+  background-color: var(--mp-border);
+  opacity: 1;
+}
+
 /* 搜索框照客户端文本输入框：乳白底、细边、悬停加深、聚焦转青瓷蓝 */
 @media screen and (min-width: 60em) {
   .md-search__form {

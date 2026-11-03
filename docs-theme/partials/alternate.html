@@ -1,0 +1,13 @@
+{#-
+  MyProxy: replaces Material's language dropdown with one button that opens
+  the current page in the other language. The Chinese and English builds share
+  site paths (scripts/mkdocs_hooks.py), so the same page URL exists under each
+  language's root in extra.alternate.
+-#}
+{%- set path = page.url if page and page.url else "" -%}
+{%- for alt in config.extra.alternate if alt.lang != config.theme.language %}
+<div class="md-header__option">
+  <a href="{{ alt.link }}{{ path }}" hreflang="{{ alt.lang }}" lang="{{ alt.lang }}"
+     class="md-header__button mp-lang" title="{{ alt.title }}" aria-label="{{ alt.title }}">{{ alt.name }}</a>
+</div>
+{%- endfor %}

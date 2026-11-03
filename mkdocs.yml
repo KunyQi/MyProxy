@@ -1,13 +1,14 @@
-# MyProxy documentation site, published to GitHub Pages by
-# .github/workflows/pages.yml.
+# MyProxy documentation site (Chinese), published to GitHub Pages by
+# .github/workflows/pages.yml. mkdocs.en.yml inherits this file and builds the
+# English site under /en/ from the *.en.md translations.
 #
-# Pages are the repository's own Markdown files; nothing is copied or
-# duplicated. docs/ is the MkDocs docs_dir, and scripts/mkdocs_hooks.py adds
-# the README, policy files and component READMEs and rewrites their links.
+# docs/ holds the site's own pages; scripts/mkdocs_hooks.py adds the README,
+# policy files and component READMEs and rewrites their links.
 #
 # Local preview:
 #   python -m pip install --require-hashes -r scripts/docs-requirements.txt
-#   python -m mkdocs serve
+#   python -m mkdocs serve                      # Chinese
+#   python -m mkdocs serve -f mkdocs.en.yml     # English
 
 site_name: MyProxy
 site_description: >-
@@ -22,6 +23,9 @@ copyright: MyProxy · MIT License
 docs_dir: docs
 site_dir: site
 strict: true
+# English translations are built by mkdocs.en.yml.
+exclude_docs: |
+  *.en.md
 
 hooks:
   - scripts/mkdocs_hooks.py
@@ -29,6 +33,8 @@ hooks:
 theme:
   name: material
   language: zh
+  # partials/alternate.html: one-click switch to the same page in the other language.
+  custom_dir: docs-theme
   features:
     - navigation.sections
     - navigation.top
@@ -66,6 +72,18 @@ theme:
   favicon: assets/images/app.svg
   icon:
     repo: fontawesome/brands/github
+
+# Both languages; links are site-root paths shared by both builds.
+extra:
+  alternate:
+    - name: 中文
+      link: /MyProxy/
+      lang: zh
+      title: 切换到中文
+    - name: English
+      link: /MyProxy/en/
+      lang: en
+      title: Read this page in English
 
 # tokens.css is generated from the client's XAML design tokens by the hook.
 extra_css:

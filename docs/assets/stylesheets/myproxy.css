@@ -238,6 +238,34 @@
   border-bottom-color: var(--mp-border);
 }
 
+/* 特点卡片：卡片里的一层，只比外层略沉一点，细边立形；悬停时边线加深，不浮起。
+   正文卡片约 620px 宽，最小列宽 13rem（260px）让桌面排成两列，手机为一列。 */
+.md-typeset .grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+.md-typeset .grid.cards > ul > li {
+  padding: 0.8rem 0.9rem;
+  background-color: var(--mp-surface-sunken);
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius-md);
+  transition: border-color var(--mp-motion-fast) linear;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--mp-border-strong);
+  box-shadow: none;
+}
+
+.md-typeset .grid.cards > ul > li > p:first-child {
+  margin-bottom: 0.4em;
+}
+
+.md-typeset .grid.cards > ul > li > p:last-child {
+  margin-bottom: 0;
+  color: var(--mp-text-secondary);
+}
+
 .md-typeset code {
   border-radius: var(--mp-radius-sm);
 }

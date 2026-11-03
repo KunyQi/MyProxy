@@ -16,6 +16,7 @@
 **/publish/
 /.review-build/
 /.review-appdata/
+/site/
 /.tmp/
 **/.tmp/
 /.artifacts/

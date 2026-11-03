@@ -43,7 +43,7 @@ public sealed class CoreAssetsResourceTests
         // 同一份资源同时有明文与 .br：说明构建把它嵌了两次，挑哪个都是在赌。
         string[] names = { "MyProxy.Assets.Core.xray.exe", "MyProxy.Assets.Core.xray.exe.br" };
 
-        Assert.ThrowsException<FileNotFoundException>(
+        Assert.ThrowsExactly<FileNotFoundException>(
             () => CoreAssets.OpenResource(names, _ => new MemoryStream(Payload), "xray.exe"));
     }
 

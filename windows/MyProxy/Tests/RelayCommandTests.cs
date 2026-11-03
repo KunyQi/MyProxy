@@ -45,7 +45,7 @@ public sealed class RelayCommandTests
     public void AsyncCommand_RequiresALogger()
     {
         // 缺日志的异步命令等于故障无痕迹，构造期就该拒绝。
-        Assert.ThrowsException<ArgumentNullException>(
+        Assert.ThrowsExactly<ArgumentNullException>(
             () => new RelayCommand(null!, () => Task.CompletedTask));
     }
 

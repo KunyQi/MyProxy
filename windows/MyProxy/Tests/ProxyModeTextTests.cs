@@ -60,7 +60,7 @@ public sealed class ProxyModeTextTests
     /// 它们是三份独立的 XAML，改名时漏掉一份不会让编译失败，只会让换了皮肤的
     /// 用户看到旧名字——这正是需要一条断言而不是靠记性的地方。
     /// </summary>
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("Ceramic")]
     [DataRow("DesignTokens")]
     [DataRow("Porcelain")]

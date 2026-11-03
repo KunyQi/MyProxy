@@ -94,7 +94,7 @@ public sealed class BindingServiceTests
             var target = BindingTarget.FromBaseUrl("http://127.0.0.1:9");
             var binding = new BindingService(storage, log, new ApiEndpoint( target));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => binding.BindAsync("MOCK-0001", CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.ApiUnreachable, ex.ErrorCode);
@@ -192,7 +192,7 @@ public sealed class BindingServiceTests
             var target = BindingTarget.FromBaseUrl("http://127.0.0.1:8090");
             var binding = new BindingService(storage, log, new ApiEndpoint( target));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => binding.BindAsync("MOCK-0002", CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.PairingExpired, ex.ErrorCode);
@@ -219,7 +219,7 @@ public sealed class BindingServiceTests
             var target = BindingTarget.FromBaseUrl("http://127.0.0.1:8090");
             var binding = new BindingService(storage, log, new ApiEndpoint( target));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => binding.BindAsync("MOCK-9999", CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.PairingInvalid, ex.ErrorCode);
@@ -252,7 +252,7 @@ public sealed class BindingServiceTests
             var target = BindingTarget.FromBaseUrl(server.BaseUrl);
             var binding = new BindingService(storage, log, new ApiEndpoint( target));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => binding.BindAsync("A7K9-M2QF", CancellationToken.None));
 
             Assert.AreEqual(expectedErrorCode, ex.ErrorCode);

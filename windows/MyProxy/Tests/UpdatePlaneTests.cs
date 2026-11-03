@@ -352,7 +352,7 @@ public class ReleaseManifestTests
                 Convert.ToBase64String(raw), signature, KeyId, Keys()).Rejection);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("http://releases.example/a.zip", "", 4096L, "authenticode", "", "linux", ManifestRejection.WrongPlatform)]
     [DataRow("https://u:p@releases.example/a.zip", "", 4096L, "authenticode", "", "windows", ManifestRejection.BadArtifact)]
     [DataRow("", "ZZZZ", 4096L, "authenticode", "", "windows", ManifestRejection.BadArtifact)]
@@ -543,7 +543,7 @@ public class UpdateRecoveryTests
         Assert.AreEqual(RecoveryAction.ReportRollback, UpdateRecovery.Decide(Journal(UpdateStage.RolledBack), "1.0.0"));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(RecoveryAction.FinalizeInstall, "installed")]
     [DataRow(RecoveryAction.RollbackFailedInstall, "failed")]
     [DataRow(RecoveryAction.RestoreBackup, "failed")]
@@ -841,7 +841,7 @@ public class ReleaseSigningKeyTests
         Assert.AreEqual(32, keys["k1"].Length);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("k1")]
     [DataRow("k1:")]
     [DataRow(":aabb")]
@@ -849,14 +849,14 @@ public class ReleaseSigningKeyTests
     public void MalformedSpecsThrowInsteadOfSilentlyDroppingAKey(string spec)
     {
         // 一个拼写错误静默地把某把密钥从信任表里去掉，比整体失败糟得多。
-        Assert.ThrowsException<ArgumentException>(() => ReleaseSigningKeys.Parse(spec));
+        Assert.ThrowsExactly<ArgumentException>(() => ReleaseSigningKeys.Parse(spec));
     }
 
     [TestMethod]
     public void DuplicateKeyIdIsRejected()
     {
         string hex = new string('a', 64);
-        Assert.ThrowsException<ArgumentException>(() => ReleaseSigningKeys.Parse($"k1:{hex},k1:{hex}"));
+        Assert.ThrowsExactly<ArgumentException>(() => ReleaseSigningKeys.Parse($"k1:{hex},k1:{hex}"));
     }
 
     [TestMethod]

@@ -10,7 +10,7 @@ namespace MyProxy.Tests;
 [TestClass]
 public sealed class TrayPresentationTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(AppState.Connected, ProxyMode.Rule, "已连接 · 智能分流")]
     [DataRow(AppState.Connected, ProxyMode.Global, "已连接 · 全局代理")]
     [DataRow(AppState.Connecting, ProxyMode.Rule, "连接中 · 智能分流")]

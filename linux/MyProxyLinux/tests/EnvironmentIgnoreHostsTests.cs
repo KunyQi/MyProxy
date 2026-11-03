@@ -39,7 +39,7 @@ public sealed class EnvironmentIgnoreHostsTests
         }
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("::1", true)]
     [DataRow("fc00::", true)]
     [DataRow("fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", true)]

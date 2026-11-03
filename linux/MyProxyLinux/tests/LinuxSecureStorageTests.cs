@@ -81,11 +81,11 @@ public sealed class LinuxSecureStorageTests
         var storage = new LinuxSecureStorage(_root);
 
         // 名字来自调用方，不能让它变成一次任意的文件写入。
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             storage.ReadAsync("../escape", CancellationToken.None).GetAwaiter().GetResult());
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             storage.ReadAsync("Device", CancellationToken.None).GetAwaiter().GetResult());
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             storage.ReadAsync("a/b", CancellationToken.None).GetAwaiter().GetResult());
     }
 
@@ -123,7 +123,7 @@ public sealed class LinuxSecureStorageTests
 
         // 符号链接可以被指向任何地方：跟着它读，等于让一个别人能改的路径决定
         // 我们去读哪个文件。OpenSSH 对私钥也是这个态度。
-        Assert.ThrowsException<SecureStorageReadException>(() =>
+        Assert.ThrowsExactly<SecureStorageReadException>(() =>
             storage.ReadAsync("device", CancellationToken.None).GetAwaiter().GetResult());
     }
 }

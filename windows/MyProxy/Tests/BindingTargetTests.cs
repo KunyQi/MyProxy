@@ -7,7 +7,7 @@ namespace MyProxy.Tests;
 [TestClass]
 public sealed class BindingTargetTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("https://api.example.invalid", 443)]
     [DataRow("https://203.0.113.10:443", 443)]
     [DataRow("https://203.0.113.10:8443/", 8443)]
@@ -20,7 +20,7 @@ public sealed class BindingTargetTests
         Assert.AreEqual(expected, target.Port);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("")]
     [DataRow(" https://api.example.invalid")]
     [DataRow("https://api.example.invalid ")]
@@ -58,21 +58,21 @@ public sealed class BindingTargetTests
         Assert.IsTrue(target.IsHttps);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("{}")]
     [DataRow("{\"api_base_url\":123}")]
     [DataRow("{\"api_base_url\":\"http://127.0.0.1:8090\"}")]
     [DataRow("{\"api_base_url\":\"https://api.example.invalid/path\"}")]
     public void DeploymentConfiguration_RejectsInvalidProductionValues(string json)
     {
-        Assert.ThrowsException<ArgumentException>(() => DeploymentConfiguration.ParseApiBaseUrl(json));
+        Assert.ThrowsExactly<ArgumentException>(() => DeploymentConfiguration.ParseApiBaseUrl(json));
     }
 
     [TestMethod]
     public void ExampleTarget_CanBeConstructedButCannotCreateNetworkClient()
     {
         using var endpoint = new ApiEndpoint(BindingTarget.FromBaseUrl("https://api.example.invalid"));
-        MyProxyException ex = Assert.ThrowsException<MyProxyException>(() => endpoint.Client("claim", TimeSpan.FromSeconds(1)));
+        MyProxyException ex = Assert.ThrowsExactly<MyProxyException>(() => endpoint.Client("claim", TimeSpan.FromSeconds(1)));
         Assert.AreEqual(ErrorCode.ServerNotConfigured, ex.ErrorCode);
         StringAssert.Contains(ex.FriendlyMessage, "尚未配置服务器");
         Assert.IsFalse(BindingTarget.FromBaseUrl("https://invalid").IsConfigured);

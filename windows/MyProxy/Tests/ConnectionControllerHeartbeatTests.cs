@@ -53,7 +53,7 @@ public sealed class ConnectionControllerHeartbeatTests
         }
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true, false)]
     [DataRow(false, true)]
     public async Task StartAsync_WhenProxySnapshotCaptureOrPersistFails_DoesNotStartXray(
@@ -502,7 +502,7 @@ public sealed class ConnectionControllerHeartbeatTests
         }
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("node.example.com")]
     [DataRow("203.0.113.10")]
     [DataRow("2001:db8::10")]
@@ -689,7 +689,7 @@ public sealed class ConnectionControllerHeartbeatTests
         finally { Directory.Delete(dataRoot, recursive: true); }
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("mode")]
     [DataRow("rollback")]
     [DataRow("config")]
@@ -787,7 +787,7 @@ public sealed class ConnectionControllerHeartbeatTests
         finally { Directory.Delete(dataRoot, recursive: true); }
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("stop")]
     [DataRow("mode")]
     [DataRow("dispose")]
@@ -867,12 +867,12 @@ public sealed class ConnectionControllerHeartbeatTests
             Assert.IsFalse(xray.IsRunning);
             Assert.IsTrue(proxy.RestoreCount > 0);
             Assert.AreEqual(AppState.Error, controller.State);
-            await Assert.ThrowsExceptionAsync<ObjectDisposedException>(() => controller.StartAsync(CancellationToken.None));
+            await Assert.ThrowsExactlyAsync<ObjectDisposedException>(() => controller.StartAsync(CancellationToken.None));
         }
         finally { Directory.Delete(dataRoot, recursive: true); }
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("reconnect")]
     [DataRow("resume")]
     [DataRow("mode")]

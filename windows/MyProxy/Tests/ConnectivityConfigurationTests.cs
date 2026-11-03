@@ -22,7 +22,7 @@ public sealed class ConnectivityConfigurationTests
             JsonSerializer.Serialize(new { api_base_url = "https://api.example.invalid", connectivity_check_urls = urls })).ToArray());
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("http://check.example.invalid/204")]
     [DataRow("https://user:secret@check.example.invalid/204")]
     [DataRow("https://check.example.invalid/204?")]
@@ -33,18 +33,18 @@ public sealed class ConnectivityConfigurationTests
     [DataRow("https://check.example.invalid/\\204")]
     public void InvalidCandidatesAreRejected(string url)
     {
-        Assert.ThrowsException<ArgumentException>(() => DeploymentConfiguration.ParseConnectivityCheckUrls(
+        Assert.ThrowsExactly<ArgumentException>(() => DeploymentConfiguration.ParseConnectivityCheckUrls(
             JsonSerializer.Serialize(new { api_base_url = "https://api.example.invalid", connectivity_check_urls = new[] { url } })));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("[]")]
     [DataRow("null")]
     [DataRow("[123]")]
     [DataRow("[\"https://a.invalid\",\"https://b.invalid\",\"https://c.invalid\",\"https://d.invalid\",\"https://e.invalid\"]")]
     public void UnboundedOrMalformedCandidateListsAreRejected(string value)
     {
-        Assert.ThrowsException<ArgumentException>(() => DeploymentConfiguration.ParseConnectivityCheckUrls(
+        Assert.ThrowsExactly<ArgumentException>(() => DeploymentConfiguration.ParseConnectivityCheckUrls(
             "{\"api_base_url\":\"https://api.example.invalid\",\"connectivity_check_urls\":" + value + "}"));
     }
 }

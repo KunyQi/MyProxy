@@ -46,13 +46,13 @@ public sealed class TlsFailureTests
         await using var peer = LoopbackPeer.Start(Peer.Tls, certificate);
         using HttpClient http = CreateClient();
 
-        HttpRequestException ex = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+        HttpRequestException ex = await Assert.ThrowsExactlyAsync<HttpRequestException>(
             () => http.GetAsync(peer.BaseUrl + "/"));
 
         Assert.IsTrue(TlsFailure.IsServerCertificateRejected(ex), Describe(ex));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(Peer.ResetMidHandshake)]
     [DataRow(Peer.CloseMidHandshake)]
     [DataRow(Peer.NotTls)]
@@ -63,13 +63,13 @@ public sealed class TlsFailureTests
         await using var peer = LoopbackPeer.Start(kind, certificate);
         using HttpClient http = CreateClient();
 
-        HttpRequestException ex = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+        HttpRequestException ex = await Assert.ThrowsExactlyAsync<HttpRequestException>(
             () => http.GetAsync(peer.BaseUrl + "/"));
 
         Assert.IsFalse(TlsFailure.IsServerCertificateRejected(ex), Describe(ex));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(Peer.Tls, ErrorCode.ServerUntrusted)]
     [DataRow(Peer.ResetMidHandshake, ErrorCode.ApiUnreachable)]
     public async Task Binding_ReportsIdentityAndReachabilitySeparately(Peer kind, ErrorCode expected)
@@ -85,7 +85,7 @@ public sealed class TlsFailureTests
             using var endpoint = new StandardTlsEndpoint(peer.BaseUrl);
             var binding = new BindingService(storage, log, endpoint);
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => binding.BindAsync("A7K9-M2QF", CancellationToken.None));
 
             Assert.AreEqual(expected, ex.ErrorCode);
@@ -125,7 +125,7 @@ public sealed class TlsFailureTests
             using var endpoint = new StandardTlsEndpoint(peer.BaseUrl);
             var config = new ConfigService(storage, log, endpoint);
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => config.GetConfigAsync(CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.ServerUntrusted, ex.ErrorCode);
@@ -192,7 +192,7 @@ public sealed class TlsFailureTests
         return new X509Certificate2(signed.Export(X509ContentType.Pfx));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true, false)]
     [DataRow(false, true)]
     public async Task TrustedButExpiredOrWrongHostname_IsRejected(bool expired, bool wrongHostname)
@@ -201,7 +201,7 @@ public sealed class TlsFailureTests
         using X509Certificate2 certificate = CreateCertificate(root, expired, wrongHostname);
         await using var peer = LoopbackPeer.Start(Peer.Tls, certificate);
         using HttpClient http = CreateClient(root);
-        HttpRequestException ex = await Assert.ThrowsExceptionAsync<HttpRequestException>(() => http.GetAsync(peer.BaseUrl + "/"));
+        HttpRequestException ex = await Assert.ThrowsExactlyAsync<HttpRequestException>(() => http.GetAsync(peer.BaseUrl + "/"));
         Assert.IsTrue(TlsFailure.IsServerCertificateRejected(ex), Describe(ex));
     }
 

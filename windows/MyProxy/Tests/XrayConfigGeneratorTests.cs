@@ -169,13 +169,13 @@ public sealed class XrayConfigGeneratorTests
         AssertInvalidProfile(valid, p => p.Port = 65536);
         AssertInvalidProfile(valid, p => p.Security = "vless");
 
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             XrayConfigGenerator.Generate(valid, ProxyMode.Rule, 80, @"C:\tmp\xray.log"));
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             XrayConfigGenerator.Generate(valid, ProxyMode.Rule, 70000, @"C:\tmp\xray.log"));
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             XrayConfigGenerator.Generate(valid, ProxyMode.Rule, TestLocalPort, ""));
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             XrayConfigGenerator.Generate(valid, ProxyMode.Rule, TestLocalPort, @"relative\xray.log"));
     }
 
@@ -217,7 +217,7 @@ public sealed class XrayConfigGeneratorTests
         Assert.IsFalse(servers[3].TryGetProperty("skipFallback", out _));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("domain:github.com")]
     [DataRow("domain:githubusercontent.com")]
     [DataRow("domain:googleapis.com")]
@@ -237,7 +237,7 @@ public sealed class XrayConfigGeneratorTests
         Assert.IsFalse(rules[index].TryGetProperty("ip", out _), "known services must not require DNS for routing");
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("domain:azure.cn")]
     [DataRow("domain:microsoftonline.cn")]
     [DataRow("domain:office365.cn")]
@@ -252,7 +252,7 @@ public sealed class XrayConfigGeneratorTests
         Assert.AreEqual(-1, FindRuleIndex(global.RootElement.GetProperty("routing").GetProperty("rules"), domainRule, "direct"));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(ProxyMode.Rule, "IPIfNonMatch")]
     [DataRow(ProxyMode.Global, "AsIs")]
     public void RoutingDomainStrategy_OnlyRuleModeResolvesUnmatchedDomains(ProxyMode mode, string expectedStrategy)
@@ -359,7 +359,7 @@ public sealed class XrayConfigGeneratorTests
         ServerProfile profile = CreateValidProfile();
         mutate(profile);
 
-        Assert.ThrowsException<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             XrayConfigGenerator.Generate(profile, ProxyMode.Rule, TestLocalPort, @"C:\tmp\xray.log"));
     }
 }

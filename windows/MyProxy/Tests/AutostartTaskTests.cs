@@ -86,7 +86,7 @@ public sealed class AutostartTaskTests
         Assert.IsFalse(AutostartTask.Matches(legacy, Exe));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("")]
     [DataRow("ERROR: The system cannot find the file specified.")]
     [DataRow("<NotATask/>")]
@@ -98,8 +98,8 @@ public sealed class AutostartTaskTests
     [TestMethod]
     public void RelativeOrMissingInputs_AreRejected()
     {
-        Assert.ThrowsException<ArgumentException>(() => AutostartTask.BuildXml(@"MyProxy.exe", Sid));
-        Assert.ThrowsException<ArgumentException>(() => AutostartTask.BuildXml(Exe, ""));
+        Assert.ThrowsExactly<ArgumentException>(() => AutostartTask.BuildXml(@"MyProxy.exe", Sid));
+        Assert.ThrowsExactly<ArgumentException>(() => AutostartTask.BuildXml(Exe, ""));
     }
 
     private static XElement Parse(string xml) => XDocument.Parse(xml).Root!;

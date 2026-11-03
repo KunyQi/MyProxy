@@ -72,7 +72,7 @@ public sealed class ConfigServiceTests
             using var log = new LogService(Path.Combine(dataRoot, "logs"));
             using var endpoint = new ApiEndpoint(BindingTarget.FromBaseUrl("https://api.example.invalid"));
             var service = new ConfigService(storage, log, endpoint);
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(() => service.GetConfigAsync(CancellationToken.None));
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(() => service.GetConfigAsync(CancellationToken.None));
             Assert.AreEqual(ErrorCode.ServerNotConfigured, ex.ErrorCode);
         }
         finally { Directory.Delete(dataRoot, recursive: true); }
@@ -193,7 +193,7 @@ public sealed class ConfigServiceTests
             using var log = new LogService(Path.Combine(dataRoot, "logs"));
             var service = new ConfigService(storage, log, new ApiEndpoint( BindingTarget.FromBaseUrl("http://127.0.0.1:9")));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => service.GetConfigAsync(CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.NoValidConfig, ex.ErrorCode);
@@ -220,7 +220,7 @@ public sealed class ConfigServiceTests
             using var log = new LogService(Path.Combine(dataRoot, "logs"));
             var service = new ConfigService(storage, log, new ApiEndpoint( BindingTarget.FromBaseUrl(server.BaseUrl)));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => service.GetConfigAsync(CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.TokenInvalid, ex.ErrorCode);
@@ -326,7 +326,7 @@ public sealed class ConfigServiceTests
             using var log = new LogService(Path.Combine(dataRoot, "logs"));
             var service = new ConfigService(storage, log, new ApiEndpoint( BindingTarget.FromBaseUrl(server.BaseUrl)));
 
-            MyProxyException ex = await Assert.ThrowsExceptionAsync<MyProxyException>(
+            MyProxyException ex = await Assert.ThrowsExactlyAsync<MyProxyException>(
                 () => service.HeartbeatAsync(CancellationToken.None));
 
             Assert.AreEqual(ErrorCode.TokenInvalid, ex.ErrorCode);

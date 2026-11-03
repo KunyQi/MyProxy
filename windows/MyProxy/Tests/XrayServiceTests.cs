@@ -171,7 +171,7 @@ public sealed class XrayServiceTests
             await service.StartAsync(configPath, coreDir, CancellationToken.None);
             try
             {
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(
                     () => service.StartAsync(configPath, coreDir, CancellationToken.None));
             }
             finally

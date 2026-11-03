@@ -99,7 +99,7 @@ public sealed class XrayTrafficStatsServiceTests
             await new XrayTrafficStatsService(client, new TestLog()).QueryAsync(12345, CancellationToken.None));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("status")]
     [DataRow("missing-status")]
     [DataRow("duplicate-status")]

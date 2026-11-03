@@ -120,7 +120,7 @@ public sealed class LinuxProxyServiceTests
 
         platform.GnomeWritesFail = true;
 
-        Assert.ThrowsException<MyProxyException>(() =>
+        Assert.ThrowsExactly<MyProxyException>(() =>
             proxy.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult());
 
         // 恢复没成功 = 系统代理可能还指着我们。这时删掉标记，下一次启动就再也不知道
@@ -140,7 +140,7 @@ public sealed class LinuxProxyServiceTests
         proxy.EnableAsync("127.0.0.1", 10809, CancellationToken.None).GetAwaiter().GetResult();
         platform.EnvironmentFileDeleteFailsAt = dropIn;
 
-        Assert.ThrowsException<IOException>(
+        Assert.ThrowsExactly<IOException>(
             () => proxy.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult());
 
         Assert.IsTrue(File.Exists(Path.Combine(storage.RuntimeDir, "proxy-applied.marker")));
@@ -189,7 +189,7 @@ public sealed class LinuxProxyServiceTests
         proxy.CaptureCurrentSettings();
         File.WriteAllText(Path.Combine(storage.DataRoot, "proxy-backup.json"), "{}");
 
-        Assert.ThrowsException<InvalidDataException>(() => proxy.PersistSnapshotForCrashRecovery());
+        Assert.ThrowsExactly<InvalidDataException>(() => proxy.PersistSnapshotForCrashRecovery());
     }
 
     [TestMethod]

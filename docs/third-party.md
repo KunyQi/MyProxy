@@ -23,6 +23,7 @@
 | [OpenJDK](https://github.com/openjdk/jdk17u)、[Gradle](https://github.com/gradle/gradle)、[AGP](https://android.googlesource.com/platform/tools/base/)、[Android SDK Build Tools](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/) | JDK 17、Gradle 9.8.2、AGP 9.5.0、SDK/Build Tools 37；wrapper JAR 和分发包摘要固定 |
 | [MSTest](https://github.com/microsoft/testfx)、[VSTest](https://github.com/microsoft/vstest) | MSTest Framework/Adapter 3.11.1、Microsoft.NET.Test.Sdk 18.10.1；Windows/Linux 测试项目 |
 | [JUnit 4](https://github.com/junit-team/junit4)、[Hamcrest](https://github.com/hamcrest/JavaHamcrest) | JUnit 4.13.2 与传递断言库；Android JVM 测试 |
+| [MkDocs](https://github.com/mkdocs/mkdocs)、[Material for MkDocs](https://github.com/squidfunk/mkdocs-material)、[jieba](https://github.com/fxsjy/jieba) | 文档站构建工具（BSD-2-Clause / MIT / MIT），版本与摘要见 [docs-requirements.txt](../scripts/docs-requirements.txt)；只用于生成文档站，不进入客户端或服务端产物 |
 | [Go](https://go.dev/)、[Go mobile](https://pkg.go.dev/golang.org/x/mobile) | 原生 AAR 记录 Go 1.27.1、mobile 8b95e45f8d3e；桥接源文件保留 Go Authors 版权头与 [BSD 许可全文](../licenses/Go-BSD-3-Clause.txt)；常规客户端构建无需重新编译 Go 核心 |
 
 ## 上游传递依赖记录

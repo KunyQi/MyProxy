@@ -4,7 +4,7 @@
 
 自有服务器，三个客户端，一套公开接口。MyProxy 包含 Windows、Android、Linux 客户端和 Python 控制面。首次配对，日常开关。连接参数由部署者预先配置。
 
-本仓库面向自行部署服务器的开发者，当前版本为 0.1.x 公开测试版。开始部署见 [配置与部署](docs/deployment.md)，参与开发见 [贡献指南](CONTRIBUTING.md)，安全报告见 [SECURITY.md](SECURITY.md)。
+本仓库面向自行部署服务器的开发者，当前版本为 0.1.x 公开测试版。开始部署见 [配置与部署](docs/deployment.md)，参与开发见 [贡献指南](CONTRIBUTING.md)，安全报告见 [SECURITY.md](SECURITY.md)。全部文档也可在 [文档站](https://kunyqi.github.io/MyProxy/) 在线浏览和搜索。
 
 ## 开发初心
 

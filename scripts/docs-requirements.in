@@ -1,0 +1,7 @@
+# Documentation site toolchain (mkdocs.yml). Regenerate the hashed lock with:
+#   uv pip compile --python-version 3.12 --generate-hashes --universal \
+#     scripts/docs-requirements.in -o scripts/docs-requirements.txt
+mkdocs==1.6.1
+mkdocs-material==9.8.0
+# Chinese word segmentation for the search index.
+jieba==0.42.1

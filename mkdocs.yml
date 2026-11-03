@@ -1,0 +1,105 @@
+# MyProxy documentation site, published to GitHub Pages by
+# .github/workflows/pages.yml.
+#
+# Pages are the repository's own Markdown files; nothing is copied or
+# duplicated. docs/ is the MkDocs docs_dir, and scripts/mkdocs_hooks.py adds
+# the README, policy files and component READMEs and rewrites their links.
+#
+# Local preview:
+#   python -m pip install --require-hashes -r scripts/docs-requirements.txt
+#   python -m mkdocs serve
+
+site_name: MyProxy
+site_description: >-
+  自建 VPN：Windows / Android / Linux 三端客户端，配对码登录，一键开关。
+  Self-hosted VPN with one-switch clients, Xray VLESS + REALITY, managed through 3x-ui.
+site_url: https://kunyqi.github.io/MyProxy/
+repo_url: https://github.com/KunyQi/MyProxy
+repo_name: KunyQi/MyProxy
+edit_uri: edit/main/docs/
+copyright: MyProxy · MIT License
+
+docs_dir: docs
+site_dir: site
+strict: true
+
+hooks:
+  - scripts/mkdocs_hooks.py
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      # GitHub-style heading anchors, so links such as
+      # README.md#开源项目参考清单--references resolve on the site too.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+
+validation:
+  links:
+    anchors: warn
+
+nav:
+  - 首页: index.md
+  - 部署:
+      - deployment.md
+      - network-routing.md
+      - server/index.md
+      - server/deployment.md
+      - server/admin-browser-bridge.md
+  - 客户端:
+      - linux/index.md
+      - linux/gui.md
+      - android-core-rebuild.md
+  - 开发与维护:
+      - architecture.md
+      - maintaining.md
+      - release-publishing.md
+      - contributing.md
+  - 参考:
+      - third-party.md
+      - third-party-notices.md
+      - security.md
+      - changelog.md
